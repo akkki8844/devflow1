@@ -95,7 +95,7 @@ export function Hero() {
               <div className="animate-float" style={{ animationDelay: `${f.delay}s` }}>
                 <GlassCard glow className="w-60 p-4">
                   <div className="flex items-start gap-3">
-                    <div className={`h-9 w-9 rounded-lg grid place-items-center bg-${f.tone}/15 text-${f.tone}`}>
+                    <div className={`h-9 w-9 rounded-lg grid place-items-center ${f.tint}`}>
                       <f.icon className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
