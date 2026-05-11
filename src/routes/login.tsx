@@ -3,7 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { GridBackground } from "@/components/devflow/grid-background";
 import { GlassCard } from "@/components/devflow/glass-card";
-import { GradientText } from "@/components/devflow/gradient-text";
+import { Wordmark } from "@/components/devflow/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,14 +31,9 @@ function LoginPage() {
     <div className="relative min-h-screen grid place-items-center px-4">
       <GridBackground />
       <GlassCard glow className="w-full max-w-md p-8">
-        <Link to="/" className="inline-flex items-center gap-2 mb-6">
-          <div className="h-8 w-8 rounded-lg bg-gradient-primary grid place-items-center">
-            <span className="text-primary-foreground font-bold text-sm">D</span>
-          </div>
-          <span className="font-display font-semibold">DevFlow<GradientText> AI</GradientText></span>
-        </Link>
-        <h1 className="font-display text-2xl font-semibold">Welcome back</h1>
-        <p className="text-sm text-muted-foreground mt-1">Sign in to your DevFlow AI account.</p>
+        <Link to="/" className="mb-8 inline-block"><Wordmark /></Link>
+        <h1 className="text-3xl">Welcome back</h1>
+        <p className="text-sm text-muted-foreground mt-2">Sign in to your DevFlow account.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>

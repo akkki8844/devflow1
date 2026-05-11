@@ -3,7 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { GridBackground } from "@/components/devflow/grid-background";
 import { GlassCard } from "@/components/devflow/glass-card";
-import { GradientText } from "@/components/devflow/gradient-text";
+import { Wordmark } from "@/components/devflow/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,16 +21,21 @@ function SignupPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email, password,
       options: {
-        emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+        emailRedirectTo: typeof window !== "undefined" ? window.location.origin + "/dashboard" : undefined,
         data: { display_name: name },
       },
     });
+    if (error) { setLoading(false); return toast.error(error.message); }
+    if (!data.session) {
+      // Fallback: attempt immediate sign-in (auto-confirm is enabled)
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInErr) { setLoading(false); return toast.error(signInErr.message); }
+    }
     setLoading(false);
-    if (error) return toast.error(error.message);
-    toast.success("Account created");
+    toast.success("Welcome to DevFlow");
     nav({ to: "/dashboard" });
   }
 
@@ -38,14 +43,9 @@ function SignupPage() {
     <div className="relative min-h-screen grid place-items-center px-4 py-10">
       <GridBackground />
       <GlassCard glow className="w-full max-w-md p-8">
-        <Link to="/" className="inline-flex items-center gap-2 mb-6">
-          <div className="h-8 w-8 rounded-lg bg-gradient-primary grid place-items-center">
-            <span className="text-primary-foreground font-bold text-sm">D</span>
-          </div>
-          <span className="font-display font-semibold">DevFlow<GradientText> AI</GradientText></span>
-        </Link>
-        <h1 className="font-display text-2xl font-semibold">Create your account</h1>
-        <p className="text-sm text-muted-foreground mt-1">Start analyzing repos in seconds.</p>
+        <Link to="/" className="mb-8 inline-block"><Wordmark /></Link>
+        <h1 className="text-3xl">Create your account</h1>
+        <p className="text-sm text-muted-foreground mt-2">Start analyzing repositories in seconds.</p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="name">Name</Label>
