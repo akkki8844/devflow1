@@ -1,10 +1,12 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
-import { installServerFnAuthFetch } from "./integrations/supabase/server-fn-fetch.client";
-
 export const getRouter = () => {
-  installServerFnAuthFetch();
+  if (typeof window !== "undefined") {
+    import("./integrations/supabase/server-fn-fetch.client").then((m) =>
+      m.installServerFnAuthFetch(),
+    );
+  }
   const queryClient = new QueryClient();
 
   const router = createRouter({
