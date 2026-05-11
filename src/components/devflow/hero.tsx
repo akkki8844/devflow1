@@ -17,10 +17,10 @@ const codeLines = [
 ];
 
 const floaters = [
-  { icon: Shield, label: "Security Risk Detected", sub: "openssl@1.0 — CVE-2023-…", tone: "warning", x: "8%", y: "18%", delay: 0.3 },
-  { icon: FileText, label: "README Generated", sub: "12 sections · 3.2k tokens", tone: "success", x: "70%", y: "12%", delay: 0.5 },
-  { icon: GitBranch, label: "Architecture Mapped", sub: "frontend ↔ api ↔ db", tone: "primary", x: "5%", y: "62%", delay: 0.7 },
-  { icon: Gauge, label: "Complexity Score: 82", sub: "Healthy maintainability", tone: "accent", x: "72%", y: "60%", delay: 0.9 },
+  { icon: Shield, label: "Security Risk Detected", sub: "openssl@1.0 — CVE-2023-…", tint: "bg-warning/15 text-warning", x: "8%", y: "18%", delay: 0.3 },
+  { icon: FileText, label: "README Generated", sub: "12 sections · 3.2k tokens", tint: "bg-success/15 text-success", x: "70%", y: "12%", delay: 0.5 },
+  { icon: GitBranch, label: "Architecture Mapped", sub: "frontend ↔ api ↔ db", tint: "bg-primary/15 text-primary", x: "5%", y: "62%", delay: 0.7 },
+  { icon: Gauge, label: "Complexity Score: 82", sub: "Healthy maintainability", tint: "bg-accent/15 text-accent", x: "72%", y: "60%", delay: 0.9 },
 ] as const;
 
 export function Hero() {
