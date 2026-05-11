@@ -35,7 +35,7 @@ export function Hero() {
             className="inline-flex items-center gap-2 rounded-full glass px-3 py-1 text-xs text-muted-foreground mb-6"
           >
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-            New: AI Repository Chat is live
+            Live · Free during beta
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 16 }}

@@ -49,7 +49,12 @@ async function ghFetch(path: string) {
   const res = await fetch(`https://api.github.com${path}`, {
     headers: { Accept: "application/vnd.github+json", "User-Agent": "DevFlow-AI" },
   });
-  if (!res.ok) throw new Error(`GitHub ${res.status}: ${res.statusText}`);
+  if (!res.ok) {
+    if (res.status === 404) throw new Error("Repository not found. Make sure it's public and the URL is correct.");
+    if (res.status === 403) throw new Error("GitHub rate limit reached. Try again in a minute.");
+    if (res.status === 451) throw new Error("Repository is unavailable for legal reasons.");
+    throw new Error(`GitHub error (${res.status}). Please try a different repository.`);
+  }
   return res.json();
 }
 
