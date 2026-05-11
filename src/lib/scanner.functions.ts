@@ -49,7 +49,12 @@ async function ghFetch(path: string) {
   const res = await fetch(`https://api.github.com${path}`, {
     headers: { Accept: "application/vnd.github+json", "User-Agent": "DevFlow-AI" },
   });
-  if (!res.ok) throw new Error(`GitHub ${res.status}: ${res.statusText}`);
+  if (!res.ok) {
+    if (res.status === 404) throw new Error("Repository not found. Make sure it's public and the URL is correct.");
+    if (res.status === 403) throw new Error("GitHub rate limit reached. Try again in a minute.");
+    if (res.status === 451) throw new Error("Repository is unavailable for legal reasons.");
+    throw new Error(`GitHub error (${res.status}). Please try a different repository.`);
+  }
   return res.json();
 }
 
@@ -87,12 +92,14 @@ export const scanRepository = createServerFn({ method: "POST" })
     const gateway = createLovableAiGatewayProvider(apiKey);
     const model = gateway("google/gemini-3-flash-preview");
 
-    const { output } = await generateText({
-      model,
-      output: Output.object({ schema: analysisSchema }),
-      system:
-        "You are a senior staff engineer analyzing a public GitHub repository. Produce a precise, opinionated technical breakdown. Be specific to the actual files and stack. No filler.",
-      prompt: `Repository: ${meta.full_name}
+    let output: z.infer<typeof analysisSchema>;
+    try {
+      const result = await generateText({
+        model,
+        output: Output.object({ schema: analysisSchema }),
+        system:
+          "You are a senior staff engineer analyzing a public GitHub repository. Produce a precise, opinionated technical breakdown. Be specific to the actual files and stack. No filler.",
+        prompt: `Repository: ${meta.full_name}
 Description: ${meta.description ?? "—"}
 Primary language: ${meta.language ?? "unknown"}
 Stars: ${meta.stargazers_count} • Forks: ${meta.forks_count}
@@ -102,7 +109,14 @@ File tree sample (${files.length} files total):
 ${samplePaths}
 
 Produce structured analysis. complexity is 0-100 (higher = more complex). healthScore is 0-100 (higher = healthier). Include 3-6 items in each list.`,
-    });
+      });
+      output = result.output;
+    } catch (e: any) {
+      const msg = String(e?.message ?? e);
+      if (msg.includes("429")) throw new Error("AI is busy right now. Please retry in a few seconds.");
+      if (msg.includes("402")) throw new Error("AI credits exhausted. Add credits in workspace settings.");
+      throw new Error("AI analysis failed. Please try again.");
+    }
 
     const results: ScanResults = {
       ...output,
