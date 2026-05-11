@@ -1,8 +1,10 @@
 import { cn } from "@/lib/utils";
 import { motion, type HTMLMotionProps } from "framer-motion";
-import { forwardRef } from "react";
+import { forwardRef, type ReactNode } from "react";
 
-export const GlassCard = forwardRef<HTMLDivElement, HTMLMotionProps<"div"> & { glow?: boolean }>(
+type Props = HTMLMotionProps<"div"> & { glow?: boolean; children?: ReactNode };
+
+export const GlassCard = forwardRef<HTMLDivElement, Props>(
   ({ className, glow, children, ...props }, ref) => (
     <motion.div
       ref={ref}
@@ -14,10 +16,12 @@ export const GlassCard = forwardRef<HTMLDivElement, HTMLMotionProps<"div"> & { g
       {...props}
     >
       {glow && (
-        <div className="pointer-events-none absolute -inset-px rounded-2xl opacity-40"
-             style={{ background: "var(--gradient-glow)" }} />
+        <div
+          className="pointer-events-none absolute -inset-px rounded-2xl opacity-40"
+          style={{ background: "var(--gradient-glow)" }}
+        />
       )}
-      <div className="relative">{children}</div>
+      <div className="relative">{children as ReactNode}</div>
     </motion.div>
   )
 );
