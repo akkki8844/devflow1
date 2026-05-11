@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Github, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Wordmark } from "@/components/devflow/logo";
 import { useState } from "react";
 
 export function MarketingNav() {
@@ -20,12 +21,7 @@ export function MarketingNav() {
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
         <nav className="glass rounded-2xl flex items-center justify-between px-4 py-2.5">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="relative h-8 w-8 rounded-lg bg-gradient-primary grid place-items-center shadow-glow">
-              <span className="text-primary-foreground font-bold text-sm">D</span>
-            </div>
-            <span className="font-display font-semibold tracking-tight">DevFlow<span className="text-gradient"> AI</span></span>
-          </Link>
+          <Link to="/" className="flex items-center"><Wordmark /></Link>
           <div className="hidden md:flex items-center gap-1">
             {links.map((l) => (
               <a key={l.to} href={l.to} className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-md">
