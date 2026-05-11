@@ -72,14 +72,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "DevFlow AI — Understand Any Codebase Instantly" },
+      { name: "description", content: "DevFlow AI transforms complex GitHub repositories into understandable architecture, actionable insights, and AI-powered engineering guidance." },
+      { name: "author", content: "DevFlow AI" },
+      { property: "og:title", content: "DevFlow AI — Understand Any Codebase Instantly" },
+      { property: "og:description", content: "AI-powered repository analysis: architecture maps, security insights, README generation, and a chat assistant for your codebase." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: "@devflowai" },
     ],
     links: [
       {
