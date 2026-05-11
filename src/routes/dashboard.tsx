@@ -1,31 +1,64 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import { listScans } from "@/lib/scanner.functions";
 import { GridBackground } from "@/components/devflow/grid-background";
 import { GlassCard } from "@/components/devflow/glass-card";
 import { Wordmark } from "@/components/devflow/logo";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/devflow/animated-counter";
-import { GitBranch, Shield, Sparkles, Activity, LogOut } from "lucide-react";
+import { ArrowRight, Activity, GitBranch, Github, LogOut, Shield, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({ component: Dashboard });
 
 function Dashboard() {
   const nav = useNavigate();
   const [email, setEmail] = useState<string | null>(null);
+  const [authed, setAuthed] = useState(false);
+  const listFn = useServerFn(listScans);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) nav({ to: "/login" });
-      else setEmail(data.user.email ?? null);
+      else {
+        setEmail(data.user.email ?? null);
+        setAuthed(true);
+      }
     });
   }, [nav]);
 
+  const { data: scans = [] } = useQuery({
+    queryKey: ["scans"],
+    queryFn: () => listFn(),
+    enabled: authed,
+  });
+
   const stats = [
-    { icon: GitBranch, label: "Repos scanned", value: 24, tint: "text-primary" },
-    { icon: Sparkles, label: "AI insights", value: 312, tint: "text-accent" },
-    { icon: Activity, label: "Health score", value: 87, suffix: "%", tint: "text-success" },
-    { icon: Shield, label: "Security warnings", value: 3, tint: "text-warning" },
+    { icon: GitBranch, label: "Repos scanned", value: scans.length, tint: "text-primary" },
+    {
+      icon: Sparkles,
+      label: "AI insights",
+      value: scans.reduce((acc, s: any) => acc + ((s.results?.suggestions?.length ?? 0) + (s.results?.optimizations?.length ?? 0)), 0),
+      tint: "text-accent",
+    },
+    {
+      icon: Activity,
+      label: "Avg. health",
+      value: scans.length
+        ? Math.round(scans.reduce((a, s: any) => a + (s.results?.healthScore ?? 0), 0) / scans.length)
+        : 0,
+      suffix: "%",
+      tint: "text-success",
+    },
+    {
+      icon: Shield,
+      label: "Security warnings",
+      value: scans.reduce((acc, s: any) => acc + (s.results?.securityWarnings?.length ?? 0), 0),
+      tint: "text-warning",
+    },
   ];
 
   return (
@@ -46,30 +79,77 @@ function Dashboard() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="font-display text-3xl font-bold">Welcome back 👋</h1>
-        <p className="text-muted-foreground mt-1">Here's a snapshot of your repository intelligence.</p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="font-display text-4xl">Welcome back.</h1>
+            <p className="text-muted-foreground mt-1">Your repository intelligence, at a glance.</p>
+          </div>
+          <Button asChild variant="glow" size="lg">
+            <Link to="/scanner">New scan <ArrowRight className="h-4 w-4" /></Link>
+          </Button>
+        </div>
 
         <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((s) => (
-            <GlassCard key={s.label} className="p-5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">{s.label}</span>
-                <s.icon className={`h-4 w-4 ${s.tint}`} />
-              </div>
-              <div className="mt-3 font-display text-3xl font-bold">
-                <AnimatedCounter value={s.value} suffix={s.suffix ?? ""} />
-              </div>
-            </GlassCard>
+          {stats.map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <GlassCard className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">{s.label}</span>
+                  <s.icon className={`h-4 w-4 ${s.tint}`} />
+                </div>
+                <div className="mt-3 font-display text-4xl">
+                  <AnimatedCounter value={s.value} suffix={s.suffix ?? ""} />
+                </div>
+              </GlassCard>
+            </motion.div>
           ))}
         </div>
 
-        <GlassCard glow className="mt-8 p-8 text-center">
-          <h2 className="font-display text-2xl font-semibold">More dashboards coming online</h2>
-          <p className="mt-2 text-muted-foreground max-w-lg mx-auto">
-            Repository Scanner, AI Repo Chat, Architecture Maps, Contributor Insights, README Generator,
-            and Settings are queued for the next build pass.
-          </p>
-        </GlassCard>
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display text-2xl">Recent scans</h2>
+            <Link to="/scanner" className="text-sm text-muted-foreground hover:text-foreground">View all →</Link>
+          </div>
+
+          {scans.length === 0 ? (
+            <GlassCard glow className="p-12 text-center">
+              <Github className="h-10 w-10 mx-auto text-muted-foreground" />
+              <h3 className="mt-4 font-display text-2xl">No scans yet</h3>
+              <p className="mt-2 text-muted-foreground max-w-md mx-auto">
+                Drop a GitHub URL into the Scanner. DevFlow will map the architecture, surface risks, and brief you on the codebase.
+              </p>
+              <Button asChild variant="glow" className="mt-6">
+                <Link to="/scanner">Run your first scan <ArrowRight className="h-4 w-4" /></Link>
+              </Button>
+            </GlassCard>
+          ) : (
+            <div className="grid gap-3">
+              {scans.map((s: any) => (
+                <GlassCard key={s.id} className="p-5 group hover:border-primary/40 transition-colors">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+                        <Github className="h-3.5 w-3.5" /> {s.owner}/{s.repo_name}
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground line-clamp-1 max-w-2xl">{s.summary}</p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      {s.results?.healthScore != null && (
+                        <span className="text-success font-display text-lg">{s.results.healthScore}</span>
+                      )}
+                      <span className="text-muted-foreground">{new Date(s.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
