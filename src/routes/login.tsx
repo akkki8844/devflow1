@@ -1,12 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { GridBackground } from "@/components/devflow/grid-background";
-import { GlassCard } from "@/components/devflow/glass-card";
 import { Wordmark } from "@/components/devflow/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
@@ -21,36 +18,27 @@ function LoginPage() {
     e.preventDefault();
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    toast.success("Welcome back");
+    if (error) { setLoading(false); return toast.error(error.message); }
     nav({ to: "/dashboard" });
   }
 
   return (
-    <div className="relative min-h-screen grid place-items-center px-4">
-      <GridBackground />
-      <GlassCard glow className="w-full max-w-md p-8">
-        <Link to="/" className="mb-8 inline-block"><Wordmark /></Link>
-        <h1 className="text-3xl">Welcome back</h1>
-        <p className="text-sm text-muted-foreground mt-2">Sign in to your DevFlow account.</p>
-        <form onSubmit={onSubmit} className="mt-6 space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-          </div>
+    <div className="min-h-screen grid place-items-center px-4 bg-background">
+      <div className="w-full max-w-sm">
+        <Link to="/" className="mb-10 flex justify-center"><Wordmark /></Link>
+        <h1 className="text-2xl text-center mb-1">Welcome back</h1>
+        <p className="text-sm text-muted-foreground text-center mb-8">Sign in to continue.</p>
+        <form onSubmit={onSubmit} className="space-y-3">
+          <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" autoFocus />
+          <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" />
           <Button type="submit" variant="glow" className="w-full" disabled={loading}>
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>
         <p className="mt-6 text-sm text-muted-foreground text-center">
-          Don't have an account? <Link to="/signup" className="text-foreground hover:underline">Sign up</Link>
+          New here? <Link to="/signup" className="text-foreground hover:underline">Create account</Link>
         </p>
-      </GlassCard>
+      </div>
     </div>
   );
 }
