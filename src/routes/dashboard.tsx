@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { GridBackground } from "@/components/devflow/grid-background";
 import { GlassCard } from "@/components/devflow/glass-card";
-import { GradientText } from "@/components/devflow/gradient-text";
+import { Wordmark } from "@/components/devflow/logo";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/devflow/animated-counter";
 import { GitBranch, Shield, Sparkles, Activity, LogOut } from "lucide-react";
@@ -34,12 +34,7 @@ function Dashboard() {
       <header className="sticky top-0 z-40">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
           <nav className="glass rounded-2xl flex items-center justify-between px-4 py-2.5">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-primary grid place-items-center">
-                <span className="text-primary-foreground font-bold text-sm">D</span>
-              </div>
-              <span className="font-display font-semibold">DevFlow<GradientText> AI</GradientText></span>
-            </Link>
+            <Link to="/" className="flex items-center"><Wordmark /></Link>
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground hidden sm:inline">{email}</span>
               <Button variant="glass" size="sm" onClick={async () => { await supabase.auth.signOut(); nav({ to: "/login" }); }}>
