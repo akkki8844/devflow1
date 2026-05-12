@@ -199,7 +199,10 @@ export const deleteScan = createServerFn({ method: "POST" })
       .from("repo_scans")
       .delete()
       .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[deleteScan] DB error:", error.message);
+      throw new Error("Failed to delete scan. Please try again.");
+    }
     return { ok: true };
   });
 
