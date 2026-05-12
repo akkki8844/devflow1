@@ -184,7 +184,10 @@ export const listScans = createServerFn({ method: "GET" })
       .select("id, repo_url, repo_name, owner, summary, created_at, results")
       .order("created_at", { ascending: false })
       .limit(20);
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[listScans] DB error:", error.message);
+      throw new Error("Failed to load scans. Please try again.");
+    }
     return data ?? [];
   });
 
