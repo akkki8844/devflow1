@@ -419,3 +419,23 @@ export const getChatHistory = createServerFn({ method: "GET" })
       created_at: m.created_at,
     }));
   });
+
+export const clearChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ scanId: z.string().uuid() }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: thread } = await supabase
+      .from("chat_threads")
+      .select("id")
+      .eq("repo_scan_id", data.scanId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!thread) return { ok: true };
+    const { error } = await supabase
+      .from("chat_messages")
+      .delete()
+      .eq("thread_id", thread.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
