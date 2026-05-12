@@ -435,7 +435,7 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
             className="resize-none min-h-[44px] max-h-40 bg-transparent"
             disabled={sending}
           />
-          <Button onClick={send} disabled={sending || !input.trim()} variant="glow" size="icon" className="h-11 w-11 shrink-0">
+          <Button onClick={() => send()} disabled={sending || !input.trim()} variant="glow" size="icon" className="h-11 w-11 shrink-0">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
