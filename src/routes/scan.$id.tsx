@@ -406,7 +406,7 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
             <p className="text-sm text-muted-foreground mt-1">Grounded in the architecture, files, and risks DevFlow analyzed.</p>
             <div className="mt-5 grid gap-2 text-left">
               {suggestions.map((s) => (
-                <button key={s} onClick={() => setInput(s)} className="text-sm px-3 py-2 rounded-lg glass border-border hover:border-primary/40 transition-colors">
+                <button key={s} onClick={() => send(s)} className="text-sm px-3 py-2 rounded-lg glass border-border hover:border-primary/40 transition-colors text-left">
                   {s}
                 </button>
               ))}
