@@ -11,6 +11,7 @@ import {
   generateOnboarding,
   chatWithRepo,
   getChatHistory,
+  clearChat,
   type OnboardingGuide,
   type ScanResults,
 } from "@/lib/scanner.functions";
@@ -21,6 +22,11 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   ArrowLeft,
   BookOpen,
@@ -34,6 +40,10 @@ import {
   Rocket,
   GraduationCap,
   Link as LinkIcon,
+  Copy,
+  Download,
+  RefreshCw,
+  Trash2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/scan/$id")({ component: ScanDetail });
