@@ -25,6 +25,8 @@ function Dashboard() {
   const [email, setEmail] = useState<string | null>(null);
   const [authed, setAuthed] = useState(false);
   const listFn = useServerFn(listScans);
+  const deleteFn = useServerFn(deleteScan);
+  const qc = useQueryClient();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -40,6 +42,15 @@ function Dashboard() {
     queryKey: ["scans"],
     queryFn: () => listFn(),
     enabled: authed,
+  });
+
+  const delMut = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Scan deleted");
+      qc.invalidateQueries({ queryKey: ["scans"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to delete"),
   });
 
   const stats = [
