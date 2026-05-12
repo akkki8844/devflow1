@@ -1,16 +1,22 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { listScans } from "@/lib/scanner.functions";
+import { listScans, deleteScan } from "@/lib/scanner.functions";
 import { GridBackground } from "@/components/devflow/grid-background";
 import { GlassCard } from "@/components/devflow/glass-card";
 import { Wordmark } from "@/components/devflow/logo";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/devflow/animated-counter";
-import { ArrowRight, Activity, GitBranch, Github, LogOut, Shield, Sparkles } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ArrowRight, Activity, GitBranch, Github, LogOut, Shield, Sparkles, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({ component: Dashboard });
 
@@ -19,6 +25,8 @@ function Dashboard() {
   const [email, setEmail] = useState<string | null>(null);
   const [authed, setAuthed] = useState(false);
   const listFn = useServerFn(listScans);
+  const deleteFn = useServerFn(deleteScan);
+  const qc = useQueryClient();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -34,6 +42,15 @@ function Dashboard() {
     queryKey: ["scans"],
     queryFn: () => listFn(),
     enabled: authed,
+  });
+
+  const delMut = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Scan deleted");
+      qc.invalidateQueries({ queryKey: ["scans"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to delete"),
   });
 
   const stats = [
@@ -143,6 +160,35 @@ function Dashboard() {
                         <span className="text-success font-display text-lg">{s.results.healthScore}</span>
                       )}
                       <span className="text-muted-foreground">{new Date(s.created_at).toLocaleDateString()}</span>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label="Delete scan"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this scan?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {s.owner}/{s.repo_name} will be permanently removed. This can't be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => delMut.mutate(s.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 </GlassCard>

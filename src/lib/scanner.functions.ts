@@ -184,3 +184,15 @@ export const listScans = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return data ?? [];
   });
+
+export const deleteScan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase
+      .from("repo_scans")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
