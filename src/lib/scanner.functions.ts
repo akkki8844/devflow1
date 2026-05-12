@@ -338,7 +338,10 @@ export const chatWithRepo = createServerFn({ method: "POST" })
         })
         .select("id")
         .single();
-      if (tErr) throw new Error(tErr.message);
+      if (tErr) {
+        console.error("[chatWithRepo] thread insert error:", tErr.message);
+        throw new Error("Failed to start chat. Please try again.");
+      }
       threadId = t.id;
     }
 
