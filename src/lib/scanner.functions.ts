@@ -94,11 +94,22 @@ export const scanRepository = createServerFn({ method: "POST" })
 
     let output: z.infer<typeof analysisSchema>;
     try {
+      const schemaShape = `{
+  "summary": string,
+  "architecture": string,
+  "techStack": string[],
+  "strengths": string[],
+  "risks": string[],
+  "securityWarnings": [{ "severity": "low"|"medium"|"high", "title": string, "description": string }],
+  "suggestions": string[],
+  "optimizations": string[],
+  "complexity": number (0-100),
+  "healthScore": number (0-100)
+}`;
       const result = await generateText({
         model,
-        output: Output.object({ schema: analysisSchema }),
         system:
-          "You are a senior staff engineer analyzing a public GitHub repository. Produce a precise, opinionated technical breakdown. Be specific to the actual files and stack. No filler.",
+          "You are a senior staff engineer analyzing a public GitHub repository. Produce a precise, opinionated technical breakdown. Be specific to the actual files and stack. No filler. Always respond with ONLY a single valid JSON object that matches the requested schema. No markdown fences, no commentary.",
         prompt: `Repository: ${meta.full_name}
 Description: ${meta.description ?? "—"}
 Primary language: ${meta.language ?? "unknown"}
@@ -108,14 +119,23 @@ Topics: ${(meta.topics ?? []).join(", ") || "—"}
 File tree sample (${files.length} files total):
 ${samplePaths}
 
-Produce structured analysis. complexity is 0-100 (higher = more complex). healthScore is 0-100 (higher = healthier). Include 3-6 items in each list.`,
+Return JSON matching exactly this shape:
+${schemaShape}
+
+complexity is 0-100 (higher = more complex). healthScore is 0-100 (higher = healthier). Include 3-6 items in each list. securityWarnings may be empty.`,
       });
-      output = result.output;
+
+      const raw = result.text ?? "";
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("AI returned no JSON");
+      const parsed = JSON.parse(jsonMatch[0]);
+      output = analysisSchema.parse(parsed);
     } catch (e: any) {
       const msg = String(e?.message ?? e);
+      console.error("[scanner] AI analysis failed:", msg);
       if (msg.includes("429")) throw new Error("AI is busy right now. Please retry in a few seconds.");
       if (msg.includes("402")) throw new Error("AI credits exhausted. Add credits in workspace settings.");
-      throw new Error("AI analysis failed. Please try again.");
+      throw new Error("AI analysis failed: " + msg.slice(0, 200));
     }
 
     const results: ScanResults = {
