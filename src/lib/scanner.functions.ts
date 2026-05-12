@@ -196,3 +196,224 @@ export const deleteScan = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const getScan = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ context, data }) => {
+    const { data: row, error } = await context.supabase
+      .from("repo_scans")
+      .select("id, repo_url, repo_name, owner, summary, created_at, results")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Scan not found");
+    return row;
+  });
+
+const onboardingSchema = z.object({
+  welcome: z.string(),
+  prerequisites: z.array(z.string()),
+  setupSteps: z.array(z.object({ title: z.string(), detail: z.string() })),
+  keyDirectories: z.array(z.object({ path: z.string(), purpose: z.string() })),
+  firstTasks: z.array(z.string()),
+  glossary: z.array(z.object({ term: z.string(), definition: z.string() })),
+  resources: z.array(z.string()),
+});
+export type OnboardingGuide = z.infer<typeof onboardingSchema>;
+
+export const generateOnboarding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ scanId: z.string().uuid() }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("Missing LOVABLE_API_KEY");
+
+    const { data: row, error } = await supabase
+      .from("repo_scans")
+      .select("id, results, repo_name, owner")
+      .eq("id", data.scanId)
+      .maybeSingle();
+    if (error || !row) throw new Error("Scan not found");
+
+    const results = row.results as any;
+    if (results?.onboarding) return results.onboarding as OnboardingGuide;
+
+    const gateway = createLovableAiGatewayProvider(apiKey);
+    const model = gateway("google/gemini-3-flash-preview");
+
+    const shape = `{
+  "welcome": string,
+  "prerequisites": string[],
+  "setupSteps": [{ "title": string, "detail": string }],
+  "keyDirectories": [{ "path": string, "purpose": string }],
+  "firstTasks": string[],
+  "glossary": [{ "term": string, "definition": string }],
+  "resources": string[]
+}`;
+
+    let guide: OnboardingGuide;
+    try {
+      const r = await generateText({
+        model,
+        system:
+          "You are a senior engineer onboarding a new hire to an unfamiliar repository. Produce a warm, specific, actionable onboarding guide grounded in the actual repo. Respond with ONLY valid JSON, no markdown fences.",
+        prompt: `Repo: ${row.owner}/${row.repo_name}
+Summary: ${results?.summary ?? ""}
+Architecture: ${results?.architecture ?? ""}
+Tech stack: ${(results?.techStack ?? []).join(", ")}
+Top files: ${(results?.repo?.topFiles ?? []).slice(0, 50).join("\n")}
+
+Return JSON matching:
+${shape}
+Include 4-6 setupSteps, 4-8 keyDirectories with real paths from the file list, 4-6 firstTasks (good-first-issue ideas), 4-8 glossary terms specific to this codebase, 3-6 resources (commands, docs URLs, file links).`,
+      });
+      const m = (r.text ?? "").match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("AI returned no JSON");
+      guide = onboardingSchema.parse(JSON.parse(m[0]));
+    } catch (e: any) {
+      throw new Error("Onboarding generation failed: " + String(e?.message ?? e).slice(0, 200));
+    }
+
+    await supabase
+      .from("repo_scans")
+      .update({ results: { ...results, onboarding: guide } as any })
+      .eq("id", row.id)
+      .eq("user_id", userId);
+
+    return guide;
+  });
+
+export const chatWithRepo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      scanId: z.string().uuid(),
+      message: z.string().min(1).max(4000),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("Missing LOVABLE_API_KEY");
+
+    const { data: scan, error: sErr } = await supabase
+      .from("repo_scans")
+      .select("id, repo_name, owner, results")
+      .eq("id", data.scanId)
+      .maybeSingle();
+    if (sErr || !scan) throw new Error("Scan not found");
+
+    // Find or create thread
+    let threadId: string;
+    const { data: existing } = await supabase
+      .from("chat_threads")
+      .select("id")
+      .eq("repo_scan_id", scan.id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (existing) {
+      threadId = existing.id;
+    } else {
+      const { data: t, error: tErr } = await supabase
+        .from("chat_threads")
+        .insert({
+          user_id: userId,
+          repo_scan_id: scan.id,
+          title: `${scan.owner}/${scan.repo_name}`,
+        })
+        .select("id")
+        .single();
+      if (tErr) throw new Error(tErr.message);
+      threadId = t.id;
+    }
+
+    // Load history
+    const { data: history } = await supabase
+      .from("chat_messages")
+      .select("role, parts")
+      .eq("thread_id", threadId)
+      .order("created_at", { ascending: true });
+
+    // Save user message
+    await supabase.from("chat_messages").insert({
+      user_id: userId,
+      thread_id: threadId,
+      role: "user",
+      parts: [{ type: "text", text: data.message }] as any,
+    });
+
+    const results = scan.results as any;
+    const ctx = `Repository: ${scan.owner}/${scan.repo_name}
+Summary: ${results?.summary ?? ""}
+Architecture: ${results?.architecture ?? ""}
+Tech stack: ${(results?.techStack ?? []).join(", ")}
+Strengths: ${(results?.strengths ?? []).join("; ")}
+Risks: ${(results?.risks ?? []).join("; ")}
+Top files: ${(results?.repo?.topFiles ?? []).slice(0, 80).join(", ")}`;
+
+    const priorMessages = (history ?? []).map((h: any) => ({
+      role: h.role as "user" | "assistant",
+      content: (h.parts ?? [])
+        .map((p: any) => (p?.type === "text" ? p.text : ""))
+        .join(""),
+    }));
+
+    const gateway = createLovableAiGatewayProvider(apiKey);
+    const model = gateway("google/gemini-3-flash-preview");
+
+    let answer = "";
+    try {
+      const r = await generateText({
+        model,
+        system: `You are an expert engineer who has deeply analyzed this repository. Answer concisely and specifically, referencing real files and concepts from the context. Use markdown. If you don't know, say so.\n\nREPO CONTEXT:\n${ctx}`,
+        messages: [
+          ...priorMessages,
+          { role: "user", content: data.message },
+        ],
+      });
+      answer = r.text ?? "";
+    } catch (e: any) {
+      const msg = String(e?.message ?? e);
+      if (msg.includes("429")) throw new Error("AI is busy. Retry shortly.");
+      if (msg.includes("402")) throw new Error("AI credits exhausted.");
+      throw new Error("Chat failed: " + msg.slice(0, 200));
+    }
+
+    await supabase.from("chat_messages").insert({
+      user_id: userId,
+      thread_id: threadId,
+      role: "assistant",
+      parts: [{ type: "text", text: answer }] as any,
+    });
+
+    return { threadId, answer };
+  });
+
+export const getChatHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ scanId: z.string().uuid() }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: thread } = await supabase
+      .from("chat_threads")
+      .select("id")
+      .eq("repo_scan_id", data.scanId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!thread) return [];
+    const { data: msgs } = await supabase
+      .from("chat_messages")
+      .select("id, role, parts, created_at")
+      .eq("thread_id", thread.id)
+      .order("created_at", { ascending: true });
+    return (msgs ?? []).map((m: any) => ({
+      id: m.id,
+      role: m.role as "user" | "assistant",
+      text: (m.parts ?? [])
+        .map((p: any) => (p?.type === "text" ? p.text : ""))
+        .join(""),
+      created_at: m.created_at,
+    }));
+  });
