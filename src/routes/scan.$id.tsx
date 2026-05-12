@@ -11,6 +11,7 @@ import {
   generateOnboarding,
   chatWithRepo,
   getChatHistory,
+  clearChat,
   type OnboardingGuide,
   type ScanResults,
 } from "@/lib/scanner.functions";
@@ -21,6 +22,11 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   ArrowLeft,
   BookOpen,
@@ -34,6 +40,10 @@ import {
   Rocket,
   GraduationCap,
   Link as LinkIcon,
+  Copy,
+  Download,
+  RefreshCw,
+  Trash2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/scan/$id")({ component: ScanDetail });
@@ -51,10 +61,11 @@ function ScanDetail() {
     });
   }, [nav]);
 
-  const { data: scan, isLoading } = useQuery({
+  const { data: scan, isLoading, error } = useQuery({
     queryKey: ["scan", id],
     queryFn: () => getScanFn({ data: { id } }),
     enabled: ready,
+    retry: false,
   });
 
   if (!ready) return null;
@@ -75,24 +86,49 @@ function ScanDetail() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
-        {isLoading || !scan ? (
+        {error ? (
+          <GlassCard className="p-12 text-center">
+            <h2 className="font-display text-2xl">Scan unavailable</h2>
+            <p className="mt-2 text-muted-foreground">{(error as any)?.message ?? "We couldn't load this scan."}</p>
+            <Button asChild variant="glow" className="mt-6"><Link to="/dashboard">Back to dashboard</Link></Button>
+          </GlassCard>
+        ) : isLoading || !scan ? (
           <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading scan…</div>
         ) : (
           <>
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                   <Github className="h-3.5 w-3.5" /> {scan.owner}/{scan.repo_name}
+                  <a
+                    href={scan.repo_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground transition-colors"
+                    aria-label="Open repo on GitHub"
+                  >↗</a>
                 </div>
                 <h1 className="font-display text-4xl mt-2">{scan.repo_name}</h1>
                 <p className="text-muted-foreground mt-1 max-w-2xl">{scan.summary}</p>
               </div>
-              {(scan.results as any)?.healthScore != null && (
-                <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Health</div>
-                  <div className="font-display text-4xl text-success">{(scan.results as any).healthScore}</div>
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="glass"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    toast.success("Link copied");
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" /> Share
+                </Button>
+                {(scan.results as any)?.healthScore != null && (
+                  <div className="text-right">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Health</div>
+                    <div className="font-display text-4xl text-success">{(scan.results as any).healthScore}</div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <Tabs defaultValue="overview" className="mt-8">
@@ -107,7 +143,7 @@ function ScanDetail() {
               </TabsContent>
 
               <TabsContent value="onboarding" className="mt-6">
-                <OnboardingTab scanId={scan.id} initial={(scan.results as any)?.onboarding ?? null} />
+                <OnboardingTab scanId={scan.id} repoLabel={`${scan.owner}/${scan.repo_name}`} initial={(scan.results as any)?.onboarding ?? null} />
               </TabsContent>
 
               <TabsContent value="chat" className="mt-6">
@@ -147,19 +183,32 @@ function OverviewTab({ r }: { r: ScanResults }) {
   );
 }
 
-function OnboardingTab({ scanId, initial }: { scanId: string; initial: OnboardingGuide | null }) {
+function OnboardingTab({ scanId, repoLabel, initial }: { scanId: string; repoLabel: string; initial: OnboardingGuide | null }) {
   const genFn = useServerFn(generateOnboarding);
   const qc = useQueryClient();
   const [guide, setGuide] = useState<OnboardingGuide | null>(initial);
 
   const mut = useMutation({
-    mutationFn: () => genFn({ data: { scanId } }),
+    mutationFn: (force?: boolean) => genFn({ data: { scanId, force: !!force } }),
     onSuccess: (g) => {
       setGuide(g);
       qc.invalidateQueries({ queryKey: ["scan", scanId] });
+      toast.success("Onboarding guide ready");
     },
     onError: (e: any) => toast.error(e?.message ?? "Failed to generate"),
   });
+
+  function downloadMd() {
+    if (!guide) return;
+    const md = `# Onboarding — ${repoLabel}\n\n${guide.welcome}\n\n## Prerequisites\n${guide.prerequisites.map((p) => `- ${p}`).join("\n")}\n\n## Setup steps\n${guide.setupSteps.map((s, i) => `${i + 1}. **${s.title}** — ${s.detail}`).join("\n")}\n\n## Key directories\n${guide.keyDirectories.map((d) => `- \`${d.path}\` — ${d.purpose}`).join("\n")}\n\n## First tasks\n${guide.firstTasks.map((t) => `- ${t}`).join("\n")}\n\n## Glossary\n${guide.glossary.map((g) => `- **${g.term}**: ${g.definition}`).join("\n")}\n\n## Resources\n${guide.resources.map((r) => `- ${r}`).join("\n")}\n`;
+    const blob = new Blob([md], { type: "text/markdown" });
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = u;
+    a.download = `${repoLabel.replace("/", "-")}-onboarding.md`;
+    a.click();
+    URL.revokeObjectURL(u);
+  }
 
   if (!guide) {
     return (
@@ -169,7 +218,7 @@ function OnboardingTab({ scanId, initial }: { scanId: string; initial: Onboardin
         <p className="mt-2 text-muted-foreground max-w-md mx-auto">
           DevFlow will brief a new engineer on this repo: setup steps, key directories, glossary, and good-first-issue ideas.
         </p>
-        <Button variant="glow" className="mt-6" onClick={() => mut.mutate()} disabled={mut.isPending}>
+        <Button variant="glow" className="mt-6" onClick={() => mut.mutate(false)} disabled={mut.isPending}>
           {mut.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating…</> : <><Sparkles className="h-4 w-4" /> Generate guide</>}
         </Button>
       </GlassCard>
@@ -178,6 +227,14 @@ function OnboardingTab({ scanId, initial }: { scanId: string; initial: Onboardin
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="glass" size="sm" onClick={downloadMd}>
+          <Download className="h-3.5 w-3.5" /> Download .md
+        </Button>
+        <Button variant="glass" size="sm" onClick={() => mut.mutate(true)} disabled={mut.isPending}>
+          {mut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Regenerate
+        </Button>
+      </div>
       <GlassCard glow className="p-6">
         <div className="flex items-center gap-2 mb-2"><Rocket className="h-4 w-4 text-primary" /><span className="text-xs uppercase tracking-widest text-muted-foreground">Welcome</span></div>
         <p className="text-base leading-relaxed">{guide.welcome}</p>
@@ -255,6 +312,8 @@ type ChatMsg = { id: string; role: "user" | "assistant"; text: string };
 function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
   const historyFn = useServerFn(getChatHistory);
   const chatFn = useServerFn(chatWithRepo);
+  const clearFn = useServerFn(clearChat);
+  const qc = useQueryClient();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
@@ -278,8 +337,8 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(textOverride?: string) {
+    const text = (textOverride ?? input).trim();
     if (!text || sending) return;
     setInput("");
     const userMsg: ChatMsg = { id: `u-${Date.now()}`, role: "user", text };
@@ -298,6 +357,16 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
     }
   }
 
+  const clearMut = useMutation({
+    mutationFn: () => clearFn({ data: { scanId } }),
+    onSuccess: () => {
+      setMessages([]);
+      qc.invalidateQueries({ queryKey: ["chat", scanId] });
+      toast.success("Conversation cleared");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+  });
+
   const suggestions = [
     "Give me the 60-second tour of this repo.",
     "Where does request handling start?",
@@ -307,9 +376,33 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
 
   return (
     <GlassCard className="p-0 overflow-hidden flex flex-col h-[640px]">
-      <div className="px-5 py-3 border-b border-border flex items-center gap-2">
-        <MessageSquare className="h-4 w-4 text-primary" />
-        <span className="text-sm font-medium">Chat with {repoLabel}</span>
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <MessageSquare className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-sm font-medium truncate">Chat with {repoLabel}</span>
+        </div>
+        {messages.length > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
+                <Trash2 className="h-3.5 w-3.5" /> Clear
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear this conversation?</AlertDialogTitle>
+                <AlertDialogDescription>All messages with {repoLabel} will be permanently deleted.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => clearMut.mutate()}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >Clear</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-5">
@@ -320,7 +413,7 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
             <p className="text-sm text-muted-foreground mt-1">Grounded in the architecture, files, and risks DevFlow analyzed.</p>
             <div className="mt-5 grid gap-2 text-left">
               {suggestions.map((s) => (
-                <button key={s} onClick={() => setInput(s)} className="text-sm px-3 py-2 rounded-lg glass border-border hover:border-primary/40 transition-colors">
+                <button key={s} onClick={() => send(s)} className="text-sm px-3 py-2 rounded-lg glass border-border hover:border-primary/40 transition-colors text-left">
                   {s}
                 </button>
               ))}
@@ -368,7 +461,7 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
             className="resize-none min-h-[44px] max-h-40 bg-transparent"
             disabled={sending}
           />
-          <Button onClick={send} disabled={sending || !input.trim()} variant="glow" size="icon" className="h-11 w-11 shrink-0">
+          <Button onClick={() => send()} disabled={sending || !input.trim()} variant="glow" size="icon" className="h-11 w-11 shrink-0">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>

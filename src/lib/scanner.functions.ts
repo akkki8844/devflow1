@@ -224,7 +224,9 @@ export type OnboardingGuide = z.infer<typeof onboardingSchema>;
 
 export const generateOnboarding = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ scanId: z.string().uuid() }))
+  .inputValidator(
+    z.object({ scanId: z.string().uuid(), force: z.boolean().optional() }),
+  )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
     const apiKey = process.env.LOVABLE_API_KEY;
@@ -238,7 +240,7 @@ export const generateOnboarding = createServerFn({ method: "POST" })
     if (error || !row) throw new Error("Scan not found");
 
     const results = row.results as any;
-    if (results?.onboarding) return results.onboarding as OnboardingGuide;
+    if (results?.onboarding && !data.force) return results.onboarding as OnboardingGuide;
 
     const gateway = createLovableAiGatewayProvider(apiKey);
     const model = gateway("google/gemini-3-flash-preview");
@@ -416,4 +418,24 @@ export const getChatHistory = createServerFn({ method: "GET" })
         .join(""),
       created_at: m.created_at,
     }));
+  });
+
+export const clearChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ scanId: z.string().uuid() }))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: thread } = await supabase
+      .from("chat_threads")
+      .select("id")
+      .eq("repo_scan_id", data.scanId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!thread) return { ok: true };
+    const { error } = await supabase
+      .from("chat_messages")
+      .delete()
+      .eq("thread_id", thread.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
