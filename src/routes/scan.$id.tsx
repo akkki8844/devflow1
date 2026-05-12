@@ -90,19 +90,38 @@ function ScanDetail() {
         ) : (
           <>
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                   <Github className="h-3.5 w-3.5" /> {scan.owner}/{scan.repo_name}
+                  <a
+                    href={scan.repo_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground transition-colors"
+                    aria-label="Open repo on GitHub"
+                  >↗</a>
                 </div>
                 <h1 className="font-display text-4xl mt-2">{scan.repo_name}</h1>
                 <p className="text-muted-foreground mt-1 max-w-2xl">{scan.summary}</p>
               </div>
-              {(scan.results as any)?.healthScore != null && (
-                <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Health</div>
-                  <div className="font-display text-4xl text-success">{(scan.results as any).healthScore}</div>
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="glass"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    toast.success("Link copied");
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" /> Share
+                </Button>
+                {(scan.results as any)?.healthScore != null && (
+                  <div className="text-right">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Health</div>
+                    <div className="font-display text-4xl text-success">{(scan.results as any).healthScore}</div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <Tabs defaultValue="overview" className="mt-8">
