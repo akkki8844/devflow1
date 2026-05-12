@@ -215,7 +215,10 @@ export const getScan = createServerFn({ method: "GET" })
       .select("id, repo_url, repo_name, owner, summary, created_at, results")
       .eq("id", data.id)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[getScan] DB error:", error.message);
+      throw new Error("Failed to load scan. Please try again.");
+    }
     return row ?? null;
   });
 
