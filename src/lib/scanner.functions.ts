@@ -450,6 +450,9 @@ export const clearChat = createServerFn({ method: "POST" })
       .from("chat_messages")
       .delete()
       .eq("thread_id", thread.id);
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[clearChat] DB error:", error.message);
+      throw new Error("Failed to clear chat. Please try again.");
+    }
     return { ok: true };
   });
