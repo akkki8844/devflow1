@@ -117,7 +117,7 @@ function ScanDetail() {
               </TabsContent>
 
               <TabsContent value="onboarding" className="mt-6">
-                <OnboardingTab scanId={scan.id} initial={(scan.results as any)?.onboarding ?? null} />
+                <OnboardingTab scanId={scan.id} repoLabel={`${scan.owner}/${scan.repo_name}`} initial={(scan.results as any)?.onboarding ?? null} />
               </TabsContent>
 
               <TabsContent value="chat" className="mt-6">
