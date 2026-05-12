@@ -1,16 +1,22 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { listScans } from "@/lib/scanner.functions";
+import { listScans, deleteScan } from "@/lib/scanner.functions";
 import { GridBackground } from "@/components/devflow/grid-background";
 import { GlassCard } from "@/components/devflow/glass-card";
 import { Wordmark } from "@/components/devflow/logo";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/devflow/animated-counter";
-import { ArrowRight, Activity, GitBranch, Github, LogOut, Shield, Sparkles } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ArrowRight, Activity, GitBranch, Github, LogOut, Shield, Sparkles, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({ component: Dashboard });
 
