@@ -168,7 +168,10 @@ complexity is 0-100 (higher = more complex). healthScore is 0-100 (higher = heal
       .select("id")
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[scanRepository] DB insert error:", error.message);
+      throw new Error("Failed to save scan. Please try again.");
+    }
 
     return { id: row.id, results };
   });
