@@ -149,19 +149,16 @@ export type Database = {
       }
       user_settings: {
         Row: {
-          github_pat: string | null
           preferences: Json
           updated_at: string
           user_id: string
         }
         Insert: {
-          github_pat?: string | null
           preferences?: Json
           updated_at?: string
           user_id: string
         }
         Update: {
-          github_pat?: string | null
           preferences?: Json
           updated_at?: string
           user_id?: string
