@@ -286,6 +286,8 @@ type ChatMsg = { id: string; role: "user" | "assistant"; text: string };
 function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
   const historyFn = useServerFn(getChatHistory);
   const chatFn = useServerFn(chatWithRepo);
+  const clearFn = useServerFn(clearChat);
+  const qc = useQueryClient();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
@@ -309,8 +311,8 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(textOverride?: string) {
+    const text = (textOverride ?? input).trim();
     if (!text || sending) return;
     setInput("");
     const userMsg: ChatMsg = { id: `u-${Date.now()}`, role: "user", text };
@@ -329,6 +331,16 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
     }
   }
 
+  const clearMut = useMutation({
+    mutationFn: () => clearFn({ data: { scanId } }),
+    onSuccess: () => {
+      setMessages([]);
+      qc.invalidateQueries({ queryKey: ["chat", scanId] });
+      toast.success("Conversation cleared");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed"),
+  });
+
   const suggestions = [
     "Give me the 60-second tour of this repo.",
     "Where does request handling start?",
@@ -338,9 +350,33 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
 
   return (
     <GlassCard className="p-0 overflow-hidden flex flex-col h-[640px]">
-      <div className="px-5 py-3 border-b border-border flex items-center gap-2">
-        <MessageSquare className="h-4 w-4 text-primary" />
-        <span className="text-sm font-medium">Chat with {repoLabel}</span>
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <MessageSquare className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-sm font-medium truncate">Chat with {repoLabel}</span>
+        </div>
+        {messages.length > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
+                <Trash2 className="h-3.5 w-3.5" /> Clear
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear this conversation?</AlertDialogTitle>
+                <AlertDialogDescription>All messages with {repoLabel} will be permanently deleted.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => clearMut.mutate()}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >Clear</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-5">
