@@ -168,7 +168,10 @@ complexity is 0-100 (higher = more complex). healthScore is 0-100 (higher = heal
       .select("id")
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[scanRepository] DB insert error:", error.message);
+      throw new Error("Failed to save scan. Please try again.");
+    }
 
     return { id: row.id, results };
   });
@@ -181,7 +184,10 @@ export const listScans = createServerFn({ method: "GET" })
       .select("id, repo_url, repo_name, owner, summary, created_at, results")
       .order("created_at", { ascending: false })
       .limit(20);
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[listScans] DB error:", error.message);
+      throw new Error("Failed to load scans. Please try again.");
+    }
     return data ?? [];
   });
 
@@ -193,7 +199,10 @@ export const deleteScan = createServerFn({ method: "POST" })
       .from("repo_scans")
       .delete()
       .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[deleteScan] DB error:", error.message);
+      throw new Error("Failed to delete scan. Please try again.");
+    }
     return { ok: true };
   });
 
@@ -206,7 +215,10 @@ export const getScan = createServerFn({ method: "GET" })
       .select("id, repo_url, repo_name, owner, summary, created_at, results")
       .eq("id", data.id)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[getScan] DB error:", error.message);
+      throw new Error("Failed to load scan. Please try again.");
+    }
     return row ?? null;
   });
 
@@ -326,7 +338,10 @@ export const chatWithRepo = createServerFn({ method: "POST" })
         })
         .select("id")
         .single();
-      if (tErr) throw new Error(tErr.message);
+      if (tErr) {
+        console.error("[chatWithRepo] thread insert error:", tErr.message);
+        throw new Error("Failed to start chat. Please try again.");
+      }
       threadId = t.id;
     }
 
@@ -435,6 +450,9 @@ export const clearChat = createServerFn({ method: "POST" })
       .from("chat_messages")
       .delete()
       .eq("thread_id", thread.id);
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("[clearChat] DB error:", error.message);
+      throw new Error("Failed to clear chat. Please try again.");
+    }
     return { ok: true };
   });
