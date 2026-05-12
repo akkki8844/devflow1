@@ -147,19 +147,28 @@ function Dashboard() {
           ) : (
             <div className="grid gap-3">
               {scans.map((s: any) => (
-                <GlassCard key={s.id} className="p-5 group hover:border-primary/40 transition-colors">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
+                <GlassCard key={s.id} className="p-0 group hover:border-primary/40 transition-colors overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+                    <Link
+                      to="/scan/$id"
+                      params={{ id: s.id }}
+                      className="min-w-0 flex-1"
+                    >
                       <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                         <Github className="h-3.5 w-3.5" /> {s.owner}/{s.repo_name}
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground line-clamp-1 max-w-2xl">{s.summary}</p>
-                    </div>
+                    </Link>
                     <div className="flex items-center gap-4 text-xs">
                       {s.results?.healthScore != null && (
                         <span className="text-success font-display text-lg">{s.results.healthScore}</span>
                       )}
                       <span className="text-muted-foreground">{new Date(s.created_at).toLocaleDateString()}</span>
+                      <Button asChild variant="glass" size="sm">
+                        <Link to="/scan/$id" params={{ id: s.id }}>
+                          Open <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
