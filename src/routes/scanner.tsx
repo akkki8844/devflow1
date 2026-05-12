@@ -73,10 +73,12 @@ function ScannerPage() {
     setResults(null);
     setScanning(true);
     try {
-      const { results } = await scanFn({ data: { repoUrl: url } });
+      const { id, results } = await scanFn({ data: { repoUrl: url } });
       setResults(results);
       setPhase(PHASES.length);
       toast.success("Scan complete");
+      // Hand off to the full report (with chat + onboarding tabs)
+      setTimeout(() => nav({ to: "/scan/$id", params: { id } }), 600);
     } catch (err: any) {
       toast.error(err?.message ?? "Scan failed");
     } finally {
