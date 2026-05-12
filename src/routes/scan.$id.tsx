@@ -86,10 +86,10 @@ function ScanDetail() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
-        {error ? (
+        {error || (!isLoading && !scan) ? (
           <GlassCard className="p-12 text-center">
             <h2 className="font-display text-2xl">Scan unavailable</h2>
-            <p className="mt-2 text-muted-foreground">{(error as any)?.message ?? "We couldn't load this scan."}</p>
+            <p className="mt-2 text-muted-foreground">{(error as any)?.message ?? "This scan doesn't exist or you don't have access to it."}</p>
             <Button asChild variant="glow" className="mt-6"><Link to="/dashboard">Back to dashboard</Link></Button>
           </GlassCard>
         ) : isLoading || !scan ? (
