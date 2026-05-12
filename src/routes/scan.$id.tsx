@@ -61,10 +61,11 @@ function ScanDetail() {
     });
   }, [nav]);
 
-  const { data: scan, isLoading } = useQuery({
+  const { data: scan, isLoading, error } = useQuery({
     queryKey: ["scan", id],
     queryFn: () => getScanFn({ data: { id } }),
     enabled: ready,
+    retry: false,
   });
 
   if (!ready) return null;
@@ -85,7 +86,13 @@ function ScanDetail() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
-        {isLoading || !scan ? (
+        {error ? (
+          <GlassCard className="p-12 text-center">
+            <h2 className="font-display text-2xl">Scan unavailable</h2>
+            <p className="mt-2 text-muted-foreground">{(error as any)?.message ?? "We couldn't load this scan."}</p>
+            <Button asChild variant="glow" className="mt-6"><Link to="/dashboard">Back to dashboard</Link></Button>
+          </GlassCard>
+        ) : isLoading || !scan ? (
           <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading scan…</div>
         ) : (
           <>
