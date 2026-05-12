@@ -207,8 +207,7 @@ export const getScan = createServerFn({ method: "GET" })
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (!row) throw new Error("Scan not found");
-    return row;
+    return row ?? null;
   });
 
 const onboardingSchema = z.object({
