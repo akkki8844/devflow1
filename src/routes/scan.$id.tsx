@@ -157,19 +157,32 @@ function OverviewTab({ r }: { r: ScanResults }) {
   );
 }
 
-function OnboardingTab({ scanId, initial }: { scanId: string; initial: OnboardingGuide | null }) {
+function OnboardingTab({ scanId, repoLabel, initial }: { scanId: string; repoLabel: string; initial: OnboardingGuide | null }) {
   const genFn = useServerFn(generateOnboarding);
   const qc = useQueryClient();
   const [guide, setGuide] = useState<OnboardingGuide | null>(initial);
 
   const mut = useMutation({
-    mutationFn: () => genFn({ data: { scanId } }),
+    mutationFn: (force?: boolean) => genFn({ data: { scanId, force: !!force } }),
     onSuccess: (g) => {
       setGuide(g);
       qc.invalidateQueries({ queryKey: ["scan", scanId] });
+      toast.success("Onboarding guide ready");
     },
     onError: (e: any) => toast.error(e?.message ?? "Failed to generate"),
   });
+
+  function downloadMd() {
+    if (!guide) return;
+    const md = `# Onboarding — ${repoLabel}\n\n${guide.welcome}\n\n## Prerequisites\n${guide.prerequisites.map((p) => `- ${p}`).join("\n")}\n\n## Setup steps\n${guide.setupSteps.map((s, i) => `${i + 1}. **${s.title}** — ${s.detail}`).join("\n")}\n\n## Key directories\n${guide.keyDirectories.map((d) => `- \`${d.path}\` — ${d.purpose}`).join("\n")}\n\n## First tasks\n${guide.firstTasks.map((t) => `- ${t}`).join("\n")}\n\n## Glossary\n${guide.glossary.map((g) => `- **${g.term}**: ${g.definition}`).join("\n")}\n\n## Resources\n${guide.resources.map((r) => `- ${r}`).join("\n")}\n`;
+    const blob = new Blob([md], { type: "text/markdown" });
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = u;
+    a.download = `${repoLabel.replace("/", "-")}-onboarding.md`;
+    a.click();
+    URL.revokeObjectURL(u);
+  }
 
   if (!guide) {
     return (
@@ -179,7 +192,7 @@ function OnboardingTab({ scanId, initial }: { scanId: string; initial: Onboardin
         <p className="mt-2 text-muted-foreground max-w-md mx-auto">
           DevFlow will brief a new engineer on this repo: setup steps, key directories, glossary, and good-first-issue ideas.
         </p>
-        <Button variant="glow" className="mt-6" onClick={() => mut.mutate()} disabled={mut.isPending}>
+        <Button variant="glow" className="mt-6" onClick={() => mut.mutate(false)} disabled={mut.isPending}>
           {mut.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating…</> : <><Sparkles className="h-4 w-4" /> Generate guide</>}
         </Button>
       </GlassCard>
@@ -188,6 +201,14 @@ function OnboardingTab({ scanId, initial }: { scanId: string; initial: Onboardin
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="glass" size="sm" onClick={downloadMd}>
+          <Download className="h-3.5 w-3.5" /> Download .md
+        </Button>
+        <Button variant="glass" size="sm" onClick={() => mut.mutate(true)} disabled={mut.isPending}>
+          {mut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Regenerate
+        </Button>
+      </div>
       <GlassCard glow className="p-6">
         <div className="flex items-center gap-2 mb-2"><Rocket className="h-4 w-4 text-primary" /><span className="text-xs uppercase tracking-widest text-muted-foreground">Welcome</span></div>
         <p className="text-base leading-relaxed">{guide.welcome}</p>
