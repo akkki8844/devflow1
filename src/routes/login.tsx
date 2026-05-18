@@ -6,7 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/login")({ component: LoginPage });
+export const Route = createFileRoute("/login")({
+  component: LoginPage,
+  head: () => ({
+    meta: [
+      { title: "Sign in — DevFlow AI" },
+      { name: "description", content: "Sign in to DevFlow AI to scan repositories, generate onboarding guides, and chat with your codebases." },
+      { property: "og:title", content: "Sign in — DevFlow AI" },
+      { property: "og:description", content: "Sign in to DevFlow AI to scan repositories, generate onboarding guides, and chat with your codebases." },
+      { property: "og:url", content: "https://devflow1.lovable.app/login" },
+    ],
+    links: [{ rel: "canonical", href: "https://devflow1.lovable.app/login" }],
+  }),
+});
 
 function LoginPage() {
   const nav = useNavigate();
