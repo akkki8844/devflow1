@@ -39,7 +39,7 @@ export function MarketingNav() {
             <Button asChild variant="glow" size="sm">
               <Link to="/signup">Get started</Link>
             </Button>
-            <button onClick={() => setOpen(!open)} className="md:hidden p-2 -mr-2 text-muted-foreground">
+            <button onClick={() => setOpen(!open)} className="md:hidden p-2 -mr-2 text-muted-foreground" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open}>
               <Menu className="h-5 w-5" />
             </button>
           </div>

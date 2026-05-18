@@ -461,6 +461,7 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
         <div className="flex items-end gap-2">
           <Textarea
             ref={inputRef}
+            aria-label="Ask a question about the repository"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -474,7 +475,7 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
             className="resize-none min-h-[44px] max-h-40 bg-transparent"
             disabled={sending}
           />
-          <Button onClick={() => send()} disabled={sending || !input.trim()} variant="glow" size="icon" className="h-11 w-11 shrink-0">
+          <Button onClick={() => send()} disabled={sending || !input.trim()} variant="glow" size="icon" className="h-11 w-11 shrink-0" aria-label="Send message">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
