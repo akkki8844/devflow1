@@ -1,0 +1,14 @@
+# DevFlow AI
+
+> AI-powered GitHub repository scanner that maps architecture, generates onboarding guides, and lets engineers chat with any codebase.
+
+DevFlow AI takes a public GitHub URL and returns an opinionated engineering report: tech stack, architecture map, health & complexity scores, security warnings, and AI-generated suggestions. It also produces a structured onboarding guide for new engineers and a chat interface grounded in the scanned repo.
+
+## Pages
+
+- [Home](/): Product overview, features, demo, pricing.
+- [Sign in](/login): Email/password authentication.
+- [Sign up](/signup): Create a new DevFlow account.
+- [Dashboard](/dashboard): Past scans, stats, and quick actions.
+- [Scanner](/scanner): Submit a GitHub URL for analysis.
+- [Scan detail](/scan/$id): Overview, onboarding guide, and repo chat for a specific scan.
