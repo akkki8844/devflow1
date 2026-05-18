@@ -227,7 +227,7 @@ function OnboardingTab({ scanId, repoLabel, initial }: { scanId: string; repoLab
     return (
       <GlassCard glow className="p-12 text-center">
         <GraduationCap className="h-10 w-10 mx-auto text-primary" />
-        <h3 className="mt-4 font-display text-2xl">Generate an onboarding guide</h2>
+        <h2 className="mt-4 font-display text-2xl">Generate an onboarding guide</h2>
         <p className="mt-2 text-muted-foreground max-w-md mx-auto">
           DevFlow will brief a new engineer on this repo: setup steps, key directories, glossary, and good-first-issue ideas.
         </p>
@@ -422,7 +422,7 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
         {messages.length === 0 && !sending ? (
           <div className="text-center max-w-md mx-auto">
             <Sparkles className="h-8 w-8 mx-auto text-primary" />
-            <h3 className="mt-3 font-display text-xl">Ask anything about this repo</h2>
+            <h2 className="mt-3 font-display text-xl">Ask anything about this repo</h2>
             <p className="text-sm text-muted-foreground mt-1">Grounded in the architecture, files, and risks DevFlow analyzed.</p>
             <div className="mt-5 grid gap-2 text-left">
               {suggestions.map((s) => (
