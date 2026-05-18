@@ -73,16 +73,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "DevFlow AI — Understand Any Codebase Instantly" },
-      { name: "description", content: "DevFlow AI transforms complex GitHub repositories into understandable architecture, actionable insights, and AI-powered engineering guidance." },
       { name: "author", content: "DevFlow AI" },
-      { property: "og:title", content: "DevFlow AI — Understand Any Codebase Instantly" },
-      { property: "og:description", content: "DevFlow AI transforms complex GitHub repositories into understandable architecture, actionable insights, and AI-powered engineering guidance." },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "DevFlow AI" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@devflowai" },
-      { name: "twitter:title", content: "DevFlow AI — Understand Any Codebase Instantly" },
-      { name: "twitter:description", content: "DevFlow AI transforms complex GitHub repositories into understandable architecture, actionable insights, and AI-powered engineering guidance." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3b3a5142-3738-43ed-b34d-e849850040ad/id-preview-d1f19607--9dd6b8ee-79e6-4083-845e-3dcea6565071.lovable.app-1778529368312.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3b3a5142-3738-43ed-b34d-e849850040ad/id-preview-d1f19607--9dd6b8ee-79e6-4083-845e-3dcea6565071.lovable.app-1778529368312.png" },
     ],
@@ -90,6 +85,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "stylesheet",
         href: appCss,
+      },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "DevFlow AI",
+          url: "https://devflow1.lovable.app",
+          logo: "https://devflow1.lovable.app/favicon.ico",
+        }),
       },
     ],
   }),
