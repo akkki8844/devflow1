@@ -29,7 +29,20 @@ import {
   Loader2,
 } from "lucide-react";
 
-export const Route = createFileRoute("/scanner")({ component: ScannerPage });
+export const Route = createFileRoute("/scanner")({
+  component: ScannerPage,
+  head: () => ({
+    meta: [
+      { title: "Scan a repository — DevFlow AI" },
+      { name: "description", content: "Paste a GitHub URL and get an architecture map, tech stack, security warnings, and AI suggestions in under a minute." },
+      { property: "og:title", content: "Scan a repository — DevFlow AI" },
+      { property: "og:description", content: "Paste a GitHub URL and get an architecture map, tech stack, security warnings, and AI suggestions in under a minute." },
+      { property: "og:url", content: "https://devflow1.lovable.app/scanner" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "canonical", href: "https://devflow1.lovable.app/scanner" }],
+  }),
+});
 
 const PHASES = [
   { label: "Cloning repository metadata", icon: Github },
@@ -118,6 +131,7 @@ function ScannerPage() {
           <GlassCard glow className="p-2 flex items-center gap-2">
             <Github className="h-5 w-5 ml-3 text-muted-foreground shrink-0" />
             <Input
+              aria-label="GitHub repository URL"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://github.com/vercel/next.js"

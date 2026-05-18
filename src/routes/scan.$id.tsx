@@ -46,7 +46,20 @@ import {
   Trash2,
 } from "lucide-react";
 
-export const Route = createFileRoute("/scan/$id")({ component: ScanDetail });
+export const Route = createFileRoute("/scan/$id")({
+  component: ScanDetail,
+  head: ({ params }) => ({
+    meta: [
+      { title: "Repository scan — DevFlow AI" },
+      { name: "description", content: "Architecture map, onboarding guide, and repo chat for this scan." },
+      { property: "og:title", content: "Repository scan — DevFlow AI" },
+      { property: "og:description", content: "Architecture map, onboarding guide, and repo chat for this scan." },
+      { property: "og:url", content: `https://devflow1.lovable.app/scan/${params.id}` },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "canonical", href: `https://devflow1.lovable.app/scan/${params.id}` }],
+  }),
+});
 
 function ScanDetail() {
   const { id } = Route.useParams();
@@ -162,11 +175,11 @@ function OverviewTab({ r }: { r: ScanResults }) {
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <GlassCard className="p-5">
-        <h3 className="font-display text-xl mb-2">Architecture</h3>
+        <h2 className="font-display text-xl mb-2">Architecture</h2>
         <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{r.architecture}</p>
       </GlassCard>
       <GlassCard className="p-5">
-        <h3 className="font-display text-xl mb-3">Tech stack</h3>
+        <h2 className="font-display text-xl mb-3">Tech stack</h2>
         <div className="flex flex-wrap gap-2">
           {r.techStack?.map((t) => (
             <span key={t} className="px-3 py-1 rounded-full bg-muted/40 border border-border text-xs font-mono">{t}</span>
@@ -174,7 +187,7 @@ function OverviewTab({ r }: { r: ScanResults }) {
         </div>
       </GlassCard>
       <GlassCard className="p-5 md:col-span-2">
-        <h3 className="font-display text-xl mb-3">Suggestions</h3>
+        <h2 className="font-display text-xl mb-3">Suggestions</h2>
         <ul className="space-y-2 text-sm text-muted-foreground">
           {r.suggestions?.map((s, i) => <li key={i} className="flex gap-2"><span className="mt-1.5 h-1 w-1 rounded-full bg-primary shrink-0" />{s}</li>)}
         </ul>
@@ -214,7 +227,7 @@ function OnboardingTab({ scanId, repoLabel, initial }: { scanId: string; repoLab
     return (
       <GlassCard glow className="p-12 text-center">
         <GraduationCap className="h-10 w-10 mx-auto text-primary" />
-        <h3 className="mt-4 font-display text-2xl">Generate an onboarding guide</h3>
+        <h2 className="mt-4 font-display text-2xl">Generate an onboarding guide</h2>
         <p className="mt-2 text-muted-foreground max-w-md mx-auto">
           DevFlow will brief a new engineer on this repo: setup steps, key directories, glossary, and good-first-issue ideas.
         </p>
@@ -242,13 +255,13 @@ function OnboardingTab({ scanId, repoLabel, initial }: { scanId: string; repoLab
 
       <div className="grid md:grid-cols-2 gap-4">
         <GlassCard className="p-5">
-          <div className="flex items-center gap-2 mb-3"><ListChecks className="h-4 w-4 text-accent" /><h3 className="font-display text-xl">Prerequisites</h3></div>
+          <div className="flex items-center gap-2 mb-3"><ListChecks className="h-4 w-4 text-accent" /><h2 className="font-display text-xl">Prerequisites</h2></div>
           <ul className="space-y-2 text-sm text-muted-foreground">
             {guide.prerequisites.map((p, i) => <li key={i} className="flex gap-2"><span className="mt-1.5 h-1 w-1 rounded-full bg-accent shrink-0" />{p}</li>)}
           </ul>
         </GlassCard>
         <GlassCard className="p-5">
-          <div className="flex items-center gap-2 mb-3"><FolderTree className="h-4 w-4 text-primary" /><h3 className="font-display text-xl">Key directories</h3></div>
+          <div className="flex items-center gap-2 mb-3"><FolderTree className="h-4 w-4 text-primary" /><h2 className="font-display text-xl">Key directories</h2></div>
           <ul className="space-y-2 text-sm">
             {guide.keyDirectories.map((d, i) => (
               <li key={i}>
@@ -261,7 +274,7 @@ function OnboardingTab({ scanId, repoLabel, initial }: { scanId: string; repoLab
       </div>
 
       <GlassCard className="p-5">
-        <h3 className="font-display text-xl mb-3">Setup steps</h3>
+        <h2 className="font-display text-xl mb-3">Setup steps</h2>
         <ol className="space-y-3">
           {guide.setupSteps.map((s, i) => (
             <li key={i} className="flex gap-3">
@@ -277,13 +290,13 @@ function OnboardingTab({ scanId, repoLabel, initial }: { scanId: string; repoLab
 
       <div className="grid md:grid-cols-2 gap-4">
         <GlassCard className="p-5">
-          <h3 className="font-display text-xl mb-3">First tasks</h3>
+          <h2 className="font-display text-xl mb-3">First tasks</h2>
           <ul className="space-y-2 text-sm text-muted-foreground">
             {guide.firstTasks.map((t, i) => <li key={i} className="flex gap-2"><span className="mt-1.5 h-1 w-1 rounded-full bg-success shrink-0" />{t}</li>)}
           </ul>
         </GlassCard>
         <GlassCard className="p-5">
-          <h3 className="font-display text-xl mb-3">Glossary</h3>
+          <h2 className="font-display text-xl mb-3">Glossary</h2>
           <dl className="space-y-2 text-sm">
             {guide.glossary.map((g, i) => (
               <div key={i}>
@@ -297,7 +310,7 @@ function OnboardingTab({ scanId, repoLabel, initial }: { scanId: string; repoLab
 
       {guide.resources?.length > 0 && (
         <GlassCard className="p-5">
-          <div className="flex items-center gap-2 mb-3"><LinkIcon className="h-4 w-4 text-accent" /><h3 className="font-display text-xl">Resources</h3></div>
+          <div className="flex items-center gap-2 mb-3"><LinkIcon className="h-4 w-4 text-accent" /><h2 className="font-display text-xl">Resources</h2></div>
           <ul className="space-y-1.5 text-sm text-muted-foreground font-mono">
             {guide.resources.map((r, i) => <li key={i}>{r}</li>)}
           </ul>
@@ -409,7 +422,7 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
         {messages.length === 0 && !sending ? (
           <div className="text-center max-w-md mx-auto">
             <Sparkles className="h-8 w-8 mx-auto text-primary" />
-            <h3 className="mt-3 font-display text-xl">Ask anything about this repo</h3>
+            <h2 className="mt-3 font-display text-xl">Ask anything about this repo</h2>
             <p className="text-sm text-muted-foreground mt-1">Grounded in the architecture, files, and risks DevFlow analyzed.</p>
             <div className="mt-5 grid gap-2 text-left">
               {suggestions.map((s) => (
@@ -448,6 +461,7 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
         <div className="flex items-end gap-2">
           <Textarea
             ref={inputRef}
+            aria-label="Ask a question about the repository"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -461,7 +475,7 @@ function ChatTab({ scanId, repoLabel }: { scanId: string; repoLabel: string }) {
             className="resize-none min-h-[44px] max-h-40 bg-transparent"
             disabled={sending}
           />
-          <Button onClick={() => send()} disabled={sending || !input.trim()} variant="glow" size="icon" className="h-11 w-11 shrink-0">
+          <Button onClick={() => send()} disabled={sending || !input.trim()} variant="glow" size="icon" className="h-11 w-11 shrink-0" aria-label="Send message">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>

@@ -11,6 +11,38 @@ import { CtaFooter } from "@/components/devflow/cta-footer";
 
 export const Route = createFileRoute("/")({
   component: Index,
+  head: () => ({
+    meta: [
+      { title: "DevFlow AI — Understand Any Codebase Instantly" },
+      { name: "description", content: "AI-powered GitHub repo scanner. Map architecture, generate onboarding guides, and chat with any codebase in 60 seconds." },
+      { property: "og:title", content: "DevFlow AI — Understand Any Codebase Instantly" },
+      { property: "og:description", content: "AI-powered GitHub repo scanner. Map architecture, generate onboarding guides, and chat with any codebase in 60 seconds." },
+      { property: "og:url", content: "https://devflow1.lovable.app/" },
+    ],
+    links: [{ rel: "canonical", href: "https://devflow1.lovable.app/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "DevFlow AI",
+          url: "https://devflow1.lovable.app",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "DevFlow AI",
+          applicationCategory: "DeveloperApplication",
+          operatingSystem: "Web",
+          offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        }),
+      },
+    ],
+  }),
 });
 
 function Index() {

@@ -18,7 +18,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ArrowRight, Activity, GitBranch, Github, LogOut, Shield, Sparkles, Trash2 } from "lucide-react";
 
-export const Route = createFileRoute("/dashboard")({ component: Dashboard });
+export const Route = createFileRoute("/dashboard")({
+  component: Dashboard,
+  head: () => ({
+    meta: [
+      { title: "Your DevFlow Dashboard" },
+      { name: "description", content: "All your past repository scans, AI insights, and health metrics in one place." },
+      { property: "og:title", content: "Your DevFlow Dashboard" },
+      { property: "og:description", content: "All your past repository scans, AI insights, and health metrics in one place." },
+      { property: "og:url", content: "https://devflow1.lovable.app/dashboard" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "canonical", href: "https://devflow1.lovable.app/dashboard" }],
+  }),
+});
 
 function Dashboard() {
   const nav = useNavigate();
@@ -98,7 +111,7 @@ function Dashboard() {
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="font-display text-4xl">Welcome back.</h1>
+            <h1 className="font-display text-4xl">Your DevFlow Dashboard</h1>
             <p className="text-muted-foreground mt-1">Your repository intelligence, at a glance.</p>
           </div>
           <Button asChild variant="glow" size="lg">
