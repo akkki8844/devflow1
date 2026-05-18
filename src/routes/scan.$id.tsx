@@ -46,7 +46,20 @@ import {
   Trash2,
 } from "lucide-react";
 
-export const Route = createFileRoute("/scan/$id")({ component: ScanDetail });
+export const Route = createFileRoute("/scan/$id")({
+  component: ScanDetail,
+  head: ({ params }) => ({
+    meta: [
+      { title: "Repository scan — DevFlow AI" },
+      { name: "description", content: "Architecture map, onboarding guide, and repo chat for this scan." },
+      { property: "og:title", content: "Repository scan — DevFlow AI" },
+      { property: "og:description", content: "Architecture map, onboarding guide, and repo chat for this scan." },
+      { property: "og:url", content: `https://devflow1.lovable.app/scan/${params.id}` },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "canonical", href: `https://devflow1.lovable.app/scan/${params.id}` }],
+  }),
+});
 
 function ScanDetail() {
   const { id } = Route.useParams();

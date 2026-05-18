@@ -39,8 +39,8 @@ function SignupPage() {
         <h1 className="text-2xl text-center mb-1">Create account</h1>
         <p className="text-sm text-muted-foreground text-center mb-8">Get started in seconds.</p>
         <form onSubmit={onSubmit} className="space-y-3">
-          <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" autoFocus />
-          <Input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" />
+          <Input aria-label="Email address" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" autoFocus />
+          <Input aria-label="Password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" />
           <Button type="submit" variant="glow" className="w-full" disabled={loading}>
             {loading ? "Creating…" : "Continue"}
           </Button>
