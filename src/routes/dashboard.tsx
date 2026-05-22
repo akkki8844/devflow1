@@ -9,6 +9,7 @@ import { listScans, deleteScan } from "@/lib/scanner.functions";
 import { GridBackground } from "@/components/devflow/grid-background";
 import { GlassCard } from "@/components/devflow/glass-card";
 import { Wordmark } from "@/components/devflow/logo";
+import { GithubConnect } from "@/components/devflow/github-connect";
 import { Button } from "@/components/ui/button";
 import { AnimatedCounter } from "@/components/devflow/animated-counter";
 import {
@@ -99,6 +100,7 @@ function Dashboard() {
           <nav className="glass rounded-2xl flex items-center justify-between px-4 py-2.5">
             <Link to="/" className="flex items-center"><Wordmark /></Link>
             <div className="flex items-center gap-3">
+              <GithubConnect compact />
               <span className="text-sm text-muted-foreground hidden sm:inline">{email}</span>
               <Button variant="glass" size="sm" onClick={async () => { await supabase.auth.signOut(); nav({ to: "/login" }); }}>
                 <LogOut className="h-4 w-4" /> Sign out
