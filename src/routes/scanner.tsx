@@ -85,19 +85,6 @@ function ScannerPage() {
     });
   }, [nav]);
 
-  // Surface OAuth callback status
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const sp = new URLSearchParams(window.location.search);
-    const gh = sp.get("github");
-    if (gh === "connected") {
-      toast.success("GitHub connected — private repos unlocked");
-      window.history.replaceState({}, "", "/scanner");
-    } else if (gh === "error") {
-      toast.error("GitHub connection failed: " + (sp.get("reason") ?? "unknown"));
-      window.history.replaceState({}, "", "/scanner");
-    }
-  }, []);
 
   useEffect(() => {
     if (!scanning) return;
