@@ -142,7 +142,10 @@ function ScannerPage() {
               <ArrowLeft className="h-4 w-4" />
               <Wordmark />
             </Link>
-            <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">Dashboard</Link>
+            <div className="flex items-center gap-3">
+              <GithubConnect compact />
+              <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">Dashboard</Link>
+            </div>
           </nav>
         </div>
       </header>
@@ -154,7 +157,7 @@ function ScannerPage() {
           </Badge>
           <h1 className="font-display text-4xl sm:text-5xl">Analyze any GitHub repo.</h1>
           <p className="mt-3 text-muted-foreground">
-            Paste a public repository URL. DevFlow inspects the tree, maps the architecture, and ships an opinionated engineering report.
+            Paste any public repo — or {conn?.connected ? <span className="text-foreground">connect GitHub</span> : "connect GitHub above"} to scan your private and org repositories too.
           </p>
         </div>
 
@@ -186,6 +189,44 @@ function ScannerPage() {
             ))}
           </div>
         </form>
+
+        {conn?.connected && myRepos && myRepos.length > 0 && !scanning && !results && (
+          <div className="mt-10 max-w-3xl mx-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs uppercase tracking-widest text-muted-foreground">Your repositories</h2>
+              <span className="text-xs text-muted-foreground">{myRepos.length} found</span>
+            </div>
+            <GlassCard className="p-2 max-h-80 overflow-y-auto">
+              <ul className="divide-y divide-border/60">
+                {myRepos.map((repo) => (
+                  <li key={repo.fullName}>
+                    <button
+                      type="button"
+                      onClick={() => setUrl(repo.url)}
+                      className="w-full text-left px-3 py-2.5 hover:bg-muted/30 rounded-md flex items-center gap-3 transition-colors"
+                    >
+                      {repo.private ? (
+                        <Lock className="h-3.5 w-3.5 text-warning shrink-0" />
+                      ) : (
+                        <Github className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono text-sm truncate">{repo.fullName}</div>
+                        {repo.description && (
+                          <div className="text-xs text-muted-foreground truncate">{repo.description}</div>
+                        )}
+                      </div>
+                      {repo.language && (
+                        <span className="text-[10px] uppercase tracking-widest text-muted-foreground shrink-0">{repo.language}</span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </GlassCard>
+          </div>
+        )}
+
 
         <AnimatePresence mode="wait">
           {scanning && (
