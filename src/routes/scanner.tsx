@@ -12,6 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { GithubConnect } from "@/components/devflow/github-connect";
+import { useQuery } from "@tanstack/react-query";
+import { listMyRepos, getGithubConnection } from "@/lib/github.functions";
 import {
   Activity,
   AlertTriangle,
@@ -21,6 +24,7 @@ import {
   FileCode,
   Github,
   Lightbulb,
+  Lock,
   Shield,
   Sparkles,
   Star,
@@ -59,6 +63,19 @@ function ScannerPage() {
   const [results, setResults] = useState<ScanResults | null>(null);
   const [scanning, setScanning] = useState(false);
   const scanFn = useServerFn(scanRepository);
+  const getConn = useServerFn(getGithubConnection);
+  const listRepos = useServerFn(listMyRepos);
+
+  const { data: conn } = useQuery({
+    queryKey: ["github-connection"],
+    queryFn: () => getConn(),
+    enabled: ready,
+  });
+  const { data: myRepos } = useQuery({
+    queryKey: ["github-my-repos"],
+    queryFn: () => listRepos(),
+    enabled: ready && !!conn?.connected,
+  });
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -66,6 +83,20 @@ function ScannerPage() {
       else setReady(true);
     });
   }, [nav]);
+
+  // Surface OAuth callback status
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const gh = sp.get("github");
+    if (gh === "connected") {
+      toast.success("GitHub connected — private repos unlocked");
+      window.history.replaceState({}, "", "/scanner");
+    } else if (gh === "error") {
+      toast.error("GitHub connection failed: " + (sp.get("reason") ?? "unknown"));
+      window.history.replaceState({}, "", "/scanner");
+    }
+  }, []);
 
   useEffect(() => {
     if (!scanning) return;
