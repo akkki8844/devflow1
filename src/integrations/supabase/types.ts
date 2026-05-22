@@ -84,6 +84,57 @@ export type Database = {
           },
         ]
       }
+      github_connections: {
+        Row: {
+          access_token: string
+          avatar_url: string | null
+          connected_at: string
+          github_login: string | null
+          github_user_id: number | null
+          scope: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          avatar_url?: string | null
+          connected_at?: string
+          github_login?: string | null
+          github_user_id?: number | null
+          scope?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          avatar_url?: string | null
+          connected_at?: string
+          github_login?: string | null
+          github_user_id?: number | null
+          scope?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      github_oauth_states: {
+        Row: {
+          created_at: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
