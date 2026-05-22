@@ -34,34 +34,51 @@ export const getGithubConnection = createServerFn({ method: "GET" })
     };
   });
 
-export const startGithubOAuth = createServerFn({ method: "POST" })
+export const saveGithubPat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ origin: z.string().url().max(300) }).parse(d))
+  .inputValidator((d) =>
+    z
+      .object({
+        token: z
+          .string()
+          .trim()
+          .min(20, "Token looks too short")
+          .max(255)
+          .regex(/^[A-Za-z0-9_\-]+$/, "Invalid token format"),
+      })
+      .parse(d),
+  )
   .handler(async ({ context, data }) => {
-    const clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
-    if (!clientId) throw new Error("GitHub OAuth is not configured.");
+    // Validate the PAT by hitting /user
+    const res = await fetch("https://api.github.com/user", {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${data.token}`,
+        "User-Agent": "DevFlow-AI",
+      },
+    });
+    if (res.status === 401) throw new Error("Invalid token. Check that it hasn't expired.");
+    if (!res.ok) throw new Error("GitHub rejected the token. Please try again.");
+    const user = (await res.json()) as any;
+    const scope = res.headers.get("x-oauth-scopes") ?? "";
 
-    const state = crypto.randomUUID();
-    const { error: insertErr } = await supabaseAdmin
-      .from("github_oauth_states" as any)
-      .insert({ state, user_id: context.userId });
-    if (insertErr) {
-      console.error("[startGithubOAuth] state insert error:", insertErr.message);
-      throw new Error("Failed to start GitHub connection. Please try again.");
+    const { error } = await supabaseAdmin.from("github_connections" as any).upsert(
+      {
+        user_id: context.userId,
+        access_token: data.token,
+        github_login: user.login ?? null,
+        github_user_id: user.id ?? null,
+        avatar_url: user.avatar_url ?? null,
+        scope,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+    if (error) {
+      console.error("[saveGithubPat] DB error:", error.message);
+      throw new Error("Failed to save token. Please try again.");
     }
-
-    // Best-effort cleanup of old state rows (>15 min)
-    const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-    await supabaseAdmin.from("github_oauth_states" as any).delete().lt("created_at", cutoff);
-
-    const redirectUri = `${data.origin}/api/public/github/callback`;
-    const url = new URL("https://github.com/login/oauth/authorize");
-    url.searchParams.set("client_id", clientId);
-    url.searchParams.set("redirect_uri", redirectUri);
-    url.searchParams.set("scope", "repo read:user");
-    url.searchParams.set("state", state);
-    url.searchParams.set("allow_signup", "true");
-    return { url: url.toString() };
+    return { ok: true, login: user.login as string };
   });
 
 export const disconnectGithub = createServerFn({ method: "POST" })
@@ -95,7 +112,7 @@ export const listMyRepos = createServerFn({ method: "GET" })
         {
           headers: {
             Accept: "application/vnd.github+json",
-            Authorization: `token ${token}`,
+            Authorization: `Bearer ${token}`,
             "User-Agent": "DevFlow-AI",
           },
         },
