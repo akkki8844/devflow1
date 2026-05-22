@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { scanRepository, type ScanResults } from "@/lib/scanner.functions";
+import { TechStackView } from "@/components/devflow/tech-stack-view";
 import { GridBackground } from "@/components/devflow/grid-background";
 import { GlassCard } from "@/components/devflow/glass-card";
 import { Wordmark } from "@/components/devflow/logo";
