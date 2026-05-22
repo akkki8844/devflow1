@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { scanRepository, type ScanResults } from "@/lib/scanner.functions";
+import { TechStackView } from "@/components/devflow/tech-stack-view";
 import { GridBackground } from "@/components/devflow/grid-background";
 import { GlassCard } from "@/components/devflow/glass-card";
 import { Wordmark } from "@/components/devflow/logo";
@@ -12,6 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { GithubConnect } from "@/components/devflow/github-connect";
+import { useQuery } from "@tanstack/react-query";
+import { listMyRepos, getGithubConnection } from "@/lib/github.functions";
 import {
   Activity,
   AlertTriangle,
@@ -21,6 +25,7 @@ import {
   FileCode,
   Github,
   Lightbulb,
+  Lock,
   Shield,
   Sparkles,
   Star,
@@ -59,6 +64,19 @@ function ScannerPage() {
   const [results, setResults] = useState<ScanResults | null>(null);
   const [scanning, setScanning] = useState(false);
   const scanFn = useServerFn(scanRepository);
+  const getConn = useServerFn(getGithubConnection);
+  const listRepos = useServerFn(listMyRepos);
+
+  const { data: conn } = useQuery({
+    queryKey: ["github-connection"],
+    queryFn: () => getConn(),
+    enabled: ready,
+  });
+  const { data: myRepos } = useQuery({
+    queryKey: ["github-my-repos"],
+    queryFn: () => listRepos(),
+    enabled: ready && !!conn?.connected,
+  });
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -66,6 +84,20 @@ function ScannerPage() {
       else setReady(true);
     });
   }, [nav]);
+
+  // Surface OAuth callback status
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const gh = sp.get("github");
+    if (gh === "connected") {
+      toast.success("GitHub connected — private repos unlocked");
+      window.history.replaceState({}, "", "/scanner");
+    } else if (gh === "error") {
+      toast.error("GitHub connection failed: " + (sp.get("reason") ?? "unknown"));
+      window.history.replaceState({}, "", "/scanner");
+    }
+  }, []);
 
   useEffect(() => {
     if (!scanning) return;
@@ -111,7 +143,10 @@ function ScannerPage() {
               <ArrowLeft className="h-4 w-4" />
               <Wordmark />
             </Link>
-            <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">Dashboard</Link>
+            <div className="flex items-center gap-3">
+              <GithubConnect compact />
+              <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">Dashboard</Link>
+            </div>
           </nav>
         </div>
       </header>
@@ -123,7 +158,7 @@ function ScannerPage() {
           </Badge>
           <h1 className="font-display text-4xl sm:text-5xl">Analyze any GitHub repo.</h1>
           <p className="mt-3 text-muted-foreground">
-            Paste a public repository URL. DevFlow inspects the tree, maps the architecture, and ships an opinionated engineering report.
+            Paste any public repo — or {conn?.connected ? <span className="text-foreground">connect GitHub</span> : "connect GitHub above"} to scan your private and org repositories too.
           </p>
         </div>
 
@@ -155,6 +190,44 @@ function ScannerPage() {
             ))}
           </div>
         </form>
+
+        {conn?.connected && myRepos && myRepos.length > 0 && !scanning && !results && (
+          <div className="mt-10 max-w-3xl mx-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs uppercase tracking-widest text-muted-foreground">Your repositories</h2>
+              <span className="text-xs text-muted-foreground">{myRepos.length} found</span>
+            </div>
+            <GlassCard className="p-2 max-h-80 overflow-y-auto">
+              <ul className="divide-y divide-border/60">
+                {myRepos.map((repo) => (
+                  <li key={repo.fullName}>
+                    <button
+                      type="button"
+                      onClick={() => setUrl(repo.url)}
+                      className="w-full text-left px-3 py-2.5 hover:bg-muted/30 rounded-md flex items-center gap-3 transition-colors"
+                    >
+                      {repo.private ? (
+                        <Lock className="h-3.5 w-3.5 text-warning shrink-0" />
+                      ) : (
+                        <Github className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono text-sm truncate">{repo.fullName}</div>
+                        {repo.description && (
+                          <div className="text-xs text-muted-foreground truncate">{repo.description}</div>
+                        )}
+                      </div>
+                      {repo.language && (
+                        <span className="text-[10px] uppercase tracking-widest text-muted-foreground shrink-0">{repo.language}</span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </GlassCard>
+          </div>
+        )}
+
 
         <AnimatePresence mode="wait">
           {scanning && (
@@ -254,25 +327,9 @@ function ResultsView({ r }: { r: ScanResults }) {
         </TabsContent>
 
         <TabsContent value="stack" className="mt-4">
-          <GlassCard className="p-5">
-            <h3 className="font-display text-xl mb-3">Tech stack</h3>
-            <div className="flex flex-wrap gap-2">
-              {r.techStack.map((t) => (
-                <span key={t} className="px-3 py-1.5 rounded-full bg-muted/40 border border-border text-sm font-mono">{t}</span>
-              ))}
-            </div>
-            {r.repo.topics.length > 0 && (
-              <>
-                <h4 className="mt-6 mb-2 text-xs uppercase tracking-widest text-muted-foreground">Repo topics</h4>
-                <div className="flex flex-wrap gap-2">
-                  {r.repo.topics.map((t) => (
-                    <span key={t} className="px-2.5 py-1 rounded-full border border-border text-xs">{t}</span>
-                  ))}
-                </div>
-              </>
-            )}
-          </GlassCard>
+          <TechStackView r={r} />
         </TabsContent>
+
 
         <TabsContent value="security" className="mt-4 space-y-3">
           {r.securityWarnings.length === 0 ? (

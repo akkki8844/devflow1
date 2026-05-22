@@ -44,7 +44,9 @@ import {
   Download,
   RefreshCw,
   Trash2,
+  Layers,
 } from "lucide-react";
+import { TechStackView } from "@/components/devflow/tech-stack-view";
 
 export const Route = createFileRoute("/scan/$id")({
   component: ScanDetail,
@@ -147,12 +149,17 @@ function ScanDetail() {
             <Tabs defaultValue="overview" className="mt-8">
               <TabsList className="glass">
                 <TabsTrigger value="overview"><Sparkles className="h-3.5 w-3.5 mr-1.5" />Overview</TabsTrigger>
+                <TabsTrigger value="stack"><Layers className="h-3.5 w-3.5 mr-1.5" />Tech Stack</TabsTrigger>
                 <TabsTrigger value="onboarding"><BookOpen className="h-3.5 w-3.5 mr-1.5" />Onboard Engineer</TabsTrigger>
                 <TabsTrigger value="chat"><MessageSquare className="h-3.5 w-3.5 mr-1.5" />Repo Chat</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="mt-6 space-y-4">
                 <OverviewTab r={scan.results as ScanResults} />
+              </TabsContent>
+
+              <TabsContent value="stack" className="mt-6">
+                <TechStackView r={scan.results as ScanResults} />
               </TabsContent>
 
               <TabsContent value="onboarding" className="mt-6">

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { generateText } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway";
 
 const inputSchema = z.object({ repoUrl: z.string().url().max(300) });
@@ -12,10 +13,53 @@ function parseRepo(url: string): { owner: string; repo: string } | null {
   return { owner: m[1], repo: m[2].replace(/\.git$/, "") };
 }
 
+// Names we MUST NOT surface in tech-stack output (per product requirement)
+const BOT_BLOCKLIST = [
+  "lovable",
+  "claude",
+  "cursor",
+  "copilot",
+  "v0",
+  "v0.dev",
+  "bolt",
+  "bolt.new",
+  "devin",
+  "anthropic",
+  "openai",
+  "gpt",
+  "chatgpt",
+  "replit agent",
+  "windsurf",
+  "codeium",
+  "ai builder",
+  "ai assistant",
+  "ai coding",
+  "lovable-tagger",
+];
+
+function stripBotMentions<T extends string>(arr: T[]): T[] {
+  return arr.filter((s) => {
+    const lower = String(s).toLowerCase();
+    return !BOT_BLOCKLIST.some((b) => lower.includes(b));
+  });
+}
+
+const techStackDetailedSchema = z.object({
+  languages: z.array(z.string()).default([]),
+  frameworks: z.array(z.string()).default([]),
+  libraries: z.array(z.string()).default([]),
+  buildTools: z.array(z.string()).default([]),
+  testing: z.array(z.string()).default([]),
+  infrastructure: z.array(z.string()).default([]),
+  databases: z.array(z.string()).default([]),
+});
+export type TechStackDetailed = z.infer<typeof techStackDetailedSchema>;
+
 const analysisSchema = z.object({
   summary: z.string(),
   architecture: z.string(),
   techStack: z.array(z.string()),
+  techStackDetailed: techStackDetailedSchema,
   strengths: z.array(z.string()),
   risks: z.array(z.string()),
   securityWarnings: z.array(
@@ -42,20 +86,66 @@ export type ScanResults = z.infer<typeof analysisSchema> & {
     defaultBranch: string;
     fileCount: number;
     topFiles: string[];
+    isPrivate?: boolean;
+    languages?: Record<string, number>;
   };
 };
 
-async function ghFetch(path: string) {
-  const res = await fetch(`https://api.github.com${path}`, {
-    headers: { Accept: "application/vnd.github+json", "User-Agent": "DevFlow-AI" },
-  });
+async function ghFetch(path: string, token?: string | null) {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "DevFlow-AI",
+  };
+  if (token) headers["Authorization"] = `token ${token}`;
+  const res = await fetch(`https://api.github.com${path}`, { headers });
   if (!res.ok) {
-    if (res.status === 404) throw new Error("Repository not found. Make sure it's public and the URL is correct.");
+    if (res.status === 404)
+      throw new Error(
+        token
+          ? "Repository not found, or your GitHub account doesn't have access to it."
+          : "Repository not found. If it's private, connect GitHub first.",
+      );
+    if (res.status === 401) throw new Error("GitHub token rejected. Reconnect GitHub and try again.");
     if (res.status === 403) throw new Error("GitHub rate limit reached. Try again in a minute.");
     if (res.status === 451) throw new Error("Repository is unavailable for legal reasons.");
     throw new Error(`GitHub error (${res.status}). Please try a different repository.`);
   }
   return res.json();
+}
+
+async function ghFetchRawFile(
+  owner: string,
+  repo: string,
+  branch: string,
+  path: string,
+  token?: string | null,
+): Promise<string | null> {
+  try {
+    const headers: Record<string, string> = {
+      Accept: "application/vnd.github.raw",
+      "User-Agent": "DevFlow-AI",
+    };
+    if (token) headers["Authorization"] = `token ${token}`;
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`,
+      { headers },
+    );
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text.slice(0, 8000); // cap each manifest at 8KB
+  } catch {
+    return null;
+  }
+}
+
+async function getUserGithubToken(userId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("github_connections" as any)
+    .select("access_token")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return (data as any).access_token ?? null;
 }
 
 export const scanRepository = createServerFn({ method: "POST" })
@@ -69,14 +159,18 @@ export const scanRepository = createServerFn({ method: "POST" })
     const apiKey = process.env.LOVABLE_API_KEY;
     if (!apiKey) throw new Error("Missing LOVABLE_API_KEY");
 
+    // 0. Use user's GitHub token if linked (enables private repos + higher rate limits)
+    const token = await getUserGithubToken(userId);
+
     // 1. Fetch repo metadata
-    const meta = (await ghFetch(`/repos/${parsed.owner}/${parsed.repo}`)) as any;
+    const meta = (await ghFetch(`/repos/${parsed.owner}/${parsed.repo}`, token)) as any;
 
     // 2. Fetch tree
     let tree: any = { tree: [] };
     try {
       tree = await ghFetch(
         `/repos/${parsed.owner}/${parsed.repo}/git/trees/${meta.default_branch}?recursive=1`,
+        token,
       );
     } catch {
       /* large repos may 409 */
@@ -88,7 +182,58 @@ export const scanRepository = createServerFn({ method: "POST" })
     const topFiles = files.slice(0, 60);
     const samplePaths = files.slice(0, 200).join("\n");
 
-    // 3. AI analysis
+    // 3. Languages breakdown (bytes per language)
+    let languages: Record<string, number> = {};
+    try {
+      languages = (await ghFetch(
+        `/repos/${parsed.owner}/${parsed.repo}/languages`,
+        token,
+      )) as Record<string, number>;
+    } catch {
+      /* ignore */
+    }
+
+    // 4. Fetch root dependency manifests for accurate stack detection
+    const manifestCandidates = [
+      "package.json",
+      "requirements.txt",
+      "pyproject.toml",
+      "Pipfile",
+      "go.mod",
+      "Cargo.toml",
+      "Gemfile",
+      "composer.json",
+      "build.gradle",
+      "build.gradle.kts",
+      "pom.xml",
+      "Package.swift",
+      "pubspec.yaml",
+      "Dockerfile",
+      "docker-compose.yml",
+      "docker-compose.yaml",
+      ".tool-versions",
+      "vite.config.ts",
+      "vite.config.js",
+      "next.config.js",
+      "next.config.mjs",
+      "next.config.ts",
+      "tsconfig.json",
+      "wrangler.toml",
+      "wrangler.jsonc",
+      "netlify.toml",
+      "vercel.json",
+    ];
+    const presentManifests = manifestCandidates.filter((p) => files.includes(p));
+    const manifestSnippets: { path: string; content: string }[] = [];
+    for (const p of presentManifests.slice(0, 10)) {
+      const content = await ghFetchRawFile(parsed.owner, parsed.repo, meta.default_branch, p, token);
+      if (content) manifestSnippets.push({ path: p, content });
+    }
+    const manifestsBlock = manifestSnippets
+      .map((m) => `===== ${m.path} =====\n${m.content}`)
+      .join("\n\n");
+
+    // 5. AI analysis
     const gateway = createLovableAiGatewayProvider(apiKey);
     const model = gateway("google/gemini-3-flash-preview");
 
@@ -97,7 +242,16 @@ export const scanRepository = createServerFn({ method: "POST" })
       const schemaShape = `{
   "summary": string,
   "architecture": string,
-  "techStack": string[],
+  "techStack": string[],            // flat list, every concrete tech used
+  "techStackDetailed": {
+    "languages": string[],          // e.g. ["TypeScript","Python","Go"]
+    "frameworks": string[],         // e.g. ["Next.js","FastAPI","Express"]
+    "libraries": string[],          // major runtime libs (React Query, Zod, lodash, ...)
+    "buildTools": string[],         // e.g. ["Vite","Webpack","esbuild","Turbo","Bun"]
+    "testing": string[],            // e.g. ["Vitest","Jest","Playwright","pytest"]
+    "infrastructure": string[],     // e.g. ["Docker","Cloudflare Workers","Vercel","Kubernetes","GitHub Actions"]
+    "databases": string[]           // e.g. ["PostgreSQL","Redis","SQLite","Supabase"]
+  },
   "strengths": string[],
   "risks": string[],
   "securityWarnings": [{ "severity": "low"|"medium"|"high", "title": string, "description": string }],
@@ -106,23 +260,37 @@ export const scanRepository = createServerFn({ method: "POST" })
   "complexity": number (0-100),
   "healthScore": number (0-100)
 }`;
+
       const result = await generateText({
         model,
-        system:
-          "You are a senior staff engineer analyzing a public GitHub repository. Produce a precise, opinionated technical breakdown. Be specific to the actual files and stack. No filler. Always respond with ONLY a single valid JSON object that matches the requested schema. No markdown fences, no commentary.",
-        prompt: `Repository: ${meta.full_name}
+        system: `You are a senior staff engineer analyzing a GitHub repository. Produce a precise, opinionated technical breakdown grounded in the ACTUAL files, dependency manifests, and language byte breakdown provided. Be specific and accurate — no filler, no guesses.
+
+CRITICAL TECH STACK RULES — read carefully:
+- Only list technologies that the SOURCE CODE itself uses (languages, frameworks, libraries, build tools, runtimes, databases, infra, CI).
+- DO NOT include any AI coding tools, AI assistants, AI code generators, or "AI-builder" platforms in techStack or techStackDetailed. Specifically forbidden: Lovable, lovable-tagger, Claude, Cursor, GitHub Copilot, v0, Bolt, Devin, Replit Agent, Windsurf, Codeium, ChatGPT, GPT, OpenAI, Anthropic. Even if you see traces in commits or comments, omit them.
+- Prefer items you can verify from the manifests and language stats. Skip items you only assume.
+- Use proper canonical names (e.g. "React", "Next.js", "PostgreSQL", "Tailwind CSS").
+
+Always respond with ONLY a single valid JSON object that matches the requested schema. No markdown fences, no commentary.`,
+        prompt: `Repository: ${meta.full_name}${meta.private ? " (PRIVATE)" : ""}
 Description: ${meta.description ?? "—"}
-Primary language: ${meta.language ?? "unknown"}
+Primary language (GitHub): ${meta.language ?? "unknown"}
 Stars: ${meta.stargazers_count} • Forks: ${meta.forks_count}
 Topics: ${(meta.topics ?? []).join(", ") || "—"}
+
+Language byte breakdown (from GitHub /languages):
+${Object.entries(languages).map(([k, v]) => `  ${k}: ${v}`).join("\n") || "  (none reported)"}
 
 File tree sample (${files.length} files total):
 ${samplePaths}
 
+Dependency manifests (verbatim, truncated):
+${manifestsBlock || "(no recognizable manifests found at root)"}
+
 Return JSON matching exactly this shape:
 ${schemaShape}
 
-complexity is 0-100 (higher = more complex). healthScore is 0-100 (higher = healthier). Include 3-6 items in each list. securityWarnings may be empty.`,
+complexity is 0-100 (higher = more complex). healthScore is 0-100 (higher = healthier). Include 3-6 items in each list. securityWarnings may be empty. In techStackDetailed, every array may be empty if not applicable, but populate everything you can verify from the manifests/files.`,
       });
 
       const raw = result.text ?? "";
@@ -138,6 +306,18 @@ complexity is 0-100 (higher = more complex). healthScore is 0-100 (higher = heal
       throw new Error("AI analysis failed: " + msg.slice(0, 200));
     }
 
+    // Post-filter: strip any bot mentions that slipped through, in all stack arrays
+    output.techStack = stripBotMentions(output.techStack);
+    output.techStackDetailed = {
+      languages: stripBotMentions(output.techStackDetailed.languages),
+      frameworks: stripBotMentions(output.techStackDetailed.frameworks),
+      libraries: stripBotMentions(output.techStackDetailed.libraries),
+      buildTools: stripBotMentions(output.techStackDetailed.buildTools),
+      testing: stripBotMentions(output.techStackDetailed.testing),
+      infrastructure: stripBotMentions(output.techStackDetailed.infrastructure),
+      databases: stripBotMentions(output.techStackDetailed.databases),
+    };
+
     const results: ScanResults = {
       ...output,
       repo: {
@@ -150,10 +330,12 @@ complexity is 0-100 (higher = more complex). healthScore is 0-100 (higher = heal
         defaultBranch: meta.default_branch,
         fileCount: files.length,
         topFiles,
+        isPrivate: !!meta.private,
+        languages,
       },
     };
 
-    // 4. Persist
+    // 6. Persist
     const { data: row, error } = await supabase
       .from("repo_scans")
       .insert({
@@ -271,7 +453,7 @@ export const generateOnboarding = createServerFn({ method: "POST" })
       const r = await generateText({
         model,
         system:
-          "You are a senior engineer onboarding a new hire to an unfamiliar repository. Produce a warm, specific, actionable onboarding guide grounded in the actual repo. Respond with ONLY valid JSON, no markdown fences.",
+          "You are a senior engineer onboarding a new hire to an unfamiliar repository. Produce a warm, specific, actionable onboarding guide grounded in the actual repo. Do NOT mention any AI coding tools or AI-builder platforms (Lovable, Claude, Cursor, Copilot, v0, Bolt, etc.). Respond with ONLY valid JSON, no markdown fences.",
         prompt: `Repo: ${row.owner}/${row.repo_name}
 Summary: ${results?.summary ?? ""}
 Architecture: ${results?.architecture ?? ""}
@@ -383,7 +565,7 @@ Top files: ${(results?.repo?.topFiles ?? []).slice(0, 80).join(", ")}`;
     try {
       const r = await generateText({
         model,
-        system: `You are an expert engineer who has deeply analyzed this repository. Answer concisely and specifically, referencing real files and concepts from the context. Use markdown. If you don't know, say so.\n\nREPO CONTEXT:\n${ctx}`,
+        system: `You are an expert engineer who has deeply analyzed this repository. Answer concisely and specifically, referencing real files and concepts from the context. Use markdown. If you don't know, say so. Do NOT mention any AI coding tools or AI-builder platforms in your answers.\n\nREPO CONTEXT:\n${ctx}`,
         messages: [
           ...priorMessages,
           { role: "user", content: data.message },
