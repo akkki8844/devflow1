@@ -44,7 +44,9 @@ import {
   Download,
   RefreshCw,
   Trash2,
+  Layers,
 } from "lucide-react";
+import { TechStackView } from "@/components/devflow/tech-stack-view";
 
 export const Route = createFileRoute("/scan/$id")({
   component: ScanDetail,
