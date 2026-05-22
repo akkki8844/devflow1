@@ -326,25 +326,9 @@ function ResultsView({ r }: { r: ScanResults }) {
         </TabsContent>
 
         <TabsContent value="stack" className="mt-4">
-          <GlassCard className="p-5">
-            <h3 className="font-display text-xl mb-3">Tech stack</h3>
-            <div className="flex flex-wrap gap-2">
-              {r.techStack.map((t) => (
-                <span key={t} className="px-3 py-1.5 rounded-full bg-muted/40 border border-border text-sm font-mono">{t}</span>
-              ))}
-            </div>
-            {r.repo.topics.length > 0 && (
-              <>
-                <h4 className="mt-6 mb-2 text-xs uppercase tracking-widest text-muted-foreground">Repo topics</h4>
-                <div className="flex flex-wrap gap-2">
-                  {r.repo.topics.map((t) => (
-                    <span key={t} className="px-2.5 py-1 rounded-full border border-border text-xs">{t}</span>
-                  ))}
-                </div>
-              </>
-            )}
-          </GlassCard>
+          <TechStackView r={r} />
         </TabsContent>
+
 
         <TabsContent value="security" className="mt-4 space-y-3">
           {r.securityWarnings.length === 0 ? (
